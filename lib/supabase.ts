@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 /**
@@ -8,23 +7,21 @@ import { createClient } from '@supabase/supabase-js';
  * 3. Add: VITE_SUPABASE_ANON_KEY
  */
 
-// Safety check for browser environment
-const getEnv = (key: string): string => {
-  if (typeof process !== 'undefined' && process.env && process.env[key]) {
-    return process.env[key] as string;
+// Helper to safely get environment variables in a Vite context
+const getEnvVar = (key: string): string | undefined => {
+  try {
+    // Check if import.meta and import.meta.env exist
+    const meta = import.meta as any;
+    return meta?.env ? meta.env[key] : undefined;
+  } catch (e) {
+    return undefined;
   }
-  // Use a type assertion to any to access 'env' on import.meta which might not be in standard types
-  const meta = import.meta as any;
-  if (typeof meta !== 'undefined' && meta.env && meta.env[key]) {
-    return meta.env[key] as string;
-  }
-  return '';
 };
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL') || 'https://placeholder-project-url.supabase.co';
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || 'placeholder-anon-key';
+const supabaseUrl = getEnvVar('VITE_SUPABASE_URL') || 'https://placeholder-project-url.supabase.co';
+const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY') || 'placeholder-anon-key';
 
-// Validate that the keys are actual Supabase keys and not the placeholders
+// Validate that the keys are actual Supabase keys and not placeholders
 const isConfigured = 
   supabaseUrl !== 'https://placeholder-project-url.supabase.co' && 
   supabaseAnonKey !== 'placeholder-anon-key' &&

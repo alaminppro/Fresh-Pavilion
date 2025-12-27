@@ -21,7 +21,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const handlePayraOrder = (e: React.MouseEvent) => {
     e.stopPropagation();
     const message = `হ্যালো ফ্রেশ প্যাভিলিয়ন, আমি পায়রার মাধ্যমে এই পণ্যটি অর্ডার করতে চাই: ${product.name} (৳${product.price})`;
-    // Updated WhatsApp number for Payra support
+    // Use the confirmed correct number for +880 1630-145305
     window.open(`https://wa.me/8801630145305?text=${encodeURIComponent(message)}`, '_blank');
   };
 

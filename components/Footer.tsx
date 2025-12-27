@@ -47,7 +47,7 @@ export const Footer: React.FC<FooterProps> = ({ siteName, supportPhone, logo }) 
                 Fresh Pavilion
               </a>
             </li>
-            <li className="mt-6 italic text-slate-400">"বিক্রিত পণ্য ফেরত নেওয়া হয় না"</li>
+            <li className="mt-6 italic text-slate-400">"বিক্রিত পণ্য ফেরত নেওয়া হয়"</li>
           </ul>
         </div>
       </div>

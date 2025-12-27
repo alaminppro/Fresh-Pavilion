@@ -7,9 +7,21 @@ interface FloatingWhatsAppProps {
 
 export const FloatingWhatsApp: React.FC<FloatingWhatsAppProps> = ({ phoneNumber }) => {
   const handleClick = () => {
-    const greeting = encodeURIComponent("Hello fresh pavilon, I want to know a product about.");
-    // phoneNumber is passed from App.tsx settings which is now 01630145305
-    window.open(`https://wa.me/88${phoneNumber}?text=${greeting}`, '_blank');
+    // Clean the phone number: remove any non-digit characters
+    const cleanNumber = phoneNumber.replace(/\D/g, '');
+    
+    // If it starts with '0', remove it and add '880', or if it already starts with '88' just use it.
+    // However, the requested number is +880 1630-145305 which is 8801630145305.
+    // If the input is 01630145305, adding 88 to it makes 8801630145305.
+    let finalNumber = cleanNumber;
+    if (cleanNumber.startsWith('0')) {
+      finalNumber = '88' + cleanNumber;
+    } else if (!cleanNumber.startsWith('880')) {
+      finalNumber = '880' + cleanNumber;
+    }
+
+    const greeting = encodeURIComponent("Hello fresh pavilion, I want to know a product about.");
+    window.open(`https://wa.me/${finalNumber}?text=${greeting}`, '_blank');
   };
 
   return (

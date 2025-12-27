@@ -28,8 +28,17 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
   whatsappNumber
 }) => {
   const handlePayraOrder = () => {
+    // Clean and format number for international WhatsApp link
+    const cleanNumber = whatsappNumber.replace(/\D/g, '');
+    let finalNumber = cleanNumber;
+    if (cleanNumber.startsWith('0')) {
+      finalNumber = '88' + cleanNumber;
+    } else if (!cleanNumber.startsWith('880')) {
+      finalNumber = '880' + cleanNumber;
+    }
+
     const message = `হ্যালো ফ্রেশ প্যাভিলিয়ন, আমি পায়রার মাধ্যমে এই পণ্যটি অর্ডার করতে চাই: ${product.name} (৳${product.price})`;
-    window.open(`https://wa.me/88${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/${finalNumber}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {

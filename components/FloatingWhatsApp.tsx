@@ -7,10 +7,16 @@ interface FloatingWhatsAppProps {
 
 export const FloatingWhatsApp: React.FC<FloatingWhatsAppProps> = ({ phoneNumber }) => {
   const handleClick = () => {
-    // Using the latest corrected number provided by the user: +880 1400-065088
-    const targetNumber = '8801400065088';
+    // Clean the phone number (remove non-digits) and ensure it has the country code
+    let cleaned = phoneNumber.replace(/\D/g, '');
+    if (cleaned.startsWith('0')) {
+      cleaned = '88' + cleaned;
+    } else if (!cleaned.startsWith('88')) {
+      cleaned = '88' + cleaned;
+    }
+    
     const greeting = encodeURIComponent("Hello Fresh Pavilion, I want to know about your products.");
-    window.open(`https://wa.me/${targetNumber}?text=${greeting}`, '_blank');
+    window.open(`https://wa.me/${cleaned}?text=${greeting}`, '_blank');
   };
 
   return (

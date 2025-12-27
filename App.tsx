@@ -42,8 +42,8 @@ const App: React.FC = () => {
     site_name: 'ফ্রেশ প্যাভিলিয়ন',
     logo: null,
     hero_image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1600',
-    whatsapp_number: '01400065088',
-    support_phone: '01400065088'
+    whatsapp_number: '01630145305',
+    support_phone: '01630145305'
   });
 
   // Routing Logic: Sync state with URL Hash

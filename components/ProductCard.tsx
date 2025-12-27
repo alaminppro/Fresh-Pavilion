@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Product } from '../types';
 import { COLORS, FALLBACK_IMAGE } from '../constants';
@@ -19,7 +20,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const handlePayraOrder = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Correct Payra WhatsApp number: +880 1400-065088
+    // Payra WhatsApp number: +880 1400-065088
     const payraNumber = '8801400065088';
     const message = `হ্যালো, আমি ফ্রেশ প্যাভিলিয়ন থেকে, পায়রার মাধ্যমে এই পণ্যটি অর্ডার করতে চাই: ${product.name}`;
     window.open(`https://wa.me/${payraNumber}?text=${encodeURIComponent(message)}`, '_blank');

@@ -43,6 +43,7 @@ export const Admin: React.FC<AdminProps> = ({
   const [activeTab, setActiveTab] = useState<AdminTab>('Dashboard');
   const [showProductModal, setShowProductModal] = useState(false);
   const [showStaffModal, setShowStaffModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newCatName, setNewCatName] = useState('');
 
@@ -238,19 +239,49 @@ export const Admin: React.FC<AdminProps> = ({
                 <h2 className="text-xl font-black">অর্ডার রেকর্ড</h2>
                 <button onClick={() => downloadCSV(orders, 'orders')} className="text-xs font-black text-slate-400 uppercase hover:text-slate-600 transition-all">📥 CSV ডাউনলোড</button>
              </div>
-             <table className="w-full text-left">
-               <thead><tr className="border-b text-[10px] uppercase font-black text-slate-400"><th className="pb-4">আইডি</th><th className="pb-4">কাস্টমার</th><th className="pb-4">টাকা</th><th className="pb-4">স্ট্যাটাস</th><th className="pb-4 text-right">অ্যাকশন</th></tr></thead>
-               <tbody className="divide-y font-bold">
+             <table className="w-full text-left border-separate border-spacing-y-2">
+               <thead><tr className="text-[10px] uppercase font-black text-slate-400"><th className="pb-4 pl-4">আইডি</th><th className="pb-4">কাস্টমার</th><th className="pb-4">টাকা</th><th className="pb-4">স্ট্যাটাস</th><th className="pb-4 text-right pr-4">অ্যাকশন</th></tr></thead>
+               <tbody className="font-bold">
                  {orders.map(o => (
-                   <tr key={o.id} className="hover:bg-slate-50 transition-colors">
-                     <td className="py-4 font-black text-sm">{o.id}</td>
-                     <td className="py-4 font-black"><div>{o.customerName}</div><div className="text-[10px] text-slate-400">{o.customerPhone}</div></td>
-                     <td className="py-4 font-black text-green-700">৳{o.totalPrice}</td>
-                     <td className="py-4"><span className={`px-2 py-0.5 rounded text-[8px] font-black ${o.status === 'Delivered' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{o.status}</span></td>
-                     <td className="py-4 text-right">
-                       <select value={o.status} onChange={e => onUpdateOrderStatus(o.id, e.target.value as Order['status'])} className="bg-white border-2 rounded p-1 text-[10px] font-black text-slate-900 outline-none focus:border-green-500">
-                         <option value="Pending">Pending</option><option value="Delivered">Delivered</option><option value="Cancelled">Cancelled</option>
-                       </select>
+                   <tr key={o.id} onClick={() => setSelectedOrder(o)} className="group bg-slate-50/50 hover:bg-white hover:shadow-md transition-all rounded-xl cursor-pointer overflow-hidden">
+                     <td className="py-5 pl-4 font-black text-sm rounded-l-xl">{o.id}</td>
+                     <td className="py-5">
+                       <div className="font-black text-slate-800">{o.customerName}</div>
+                       <div className="text-[10px] text-slate-400">{o.customerPhone}</div>
+                     </td>
+                     <td className="py-5 font-black text-green-700">৳{o.totalPrice}</td>
+                     <td className="py-5">
+                       <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase ${
+                         o.status === 'Delivered' ? 'bg-green-100 text-green-700' : 
+                         o.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 
+                         'bg-orange-100 text-orange-700'
+                       }`}>
+                         {o.status}
+                       </span>
+                     </td>
+                     <td className="py-5 text-right pr-4 rounded-r-xl">
+                       <div className="flex items-center justify-end gap-2">
+                         <button 
+                           onClick={(e) => { e.stopPropagation(); setSelectedOrder(o); }}
+                           className="p-2 bg-white border border-slate-100 text-slate-400 hover:text-green-600 rounded-lg shadow-sm transition-all"
+                           title="বিস্তারিত দেখুন"
+                         >
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                           </svg>
+                         </button>
+                         <select 
+                           value={o.status} 
+                           onClick={(e) => e.stopPropagation()}
+                           onChange={e => onUpdateOrderStatus(o.id, e.target.value as Order['status'])} 
+                           className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-700 outline-none focus:border-green-500 shadow-sm cursor-pointer"
+                         >
+                           <option value="Pending">Pending</option>
+                           <option value="Delivered">Delivered</option>
+                           <option value="Cancelled">Cancelled</option>
+                         </select>
+                       </div>
                      </td>
                    </tr>
                  ))}
@@ -375,7 +406,6 @@ export const Admin: React.FC<AdminProps> = ({
                                </svg>
                                ছবি আপলোড
                              </button>
-                             {/* Fixed: Use 'hero' instead of 'hero_image' to match handleFileUpload parameters */}
                              <input type="file" ref={heroInputRef} className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, 'hero')} />
                              <input type="text" value={settings.hero_image || ''} onChange={e=>onUpdateSetting('hero_image', e.target.value)} className="w-full bg-slate-50 border-2 border-slate-50 rounded-xl px-4 py-2 font-black text-slate-900 text-[10px] outline-none focus:border-green-500 transition-all" placeholder="অথবা হিরো ব্যানার লিংক (URL) দিন" />
                           </div>
@@ -401,6 +431,157 @@ export const Admin: React.FC<AdminProps> = ({
            </div>
         )}
       </main>
+
+      {/* Improved Order Details Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedOrder(null)}>
+          <div className="bg-white w-full max-w-4xl rounded-[3rem] p-8 md:p-12 shadow-2xl overflow-y-auto max-h-[90vh] text-slate-900 relative" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedOrder(null)} 
+              className="absolute top-6 right-6 text-slate-300 hover:text-slate-800 transition-colors text-2xl p-2 hover:bg-slate-50 rounded-full"
+            >
+              ✕
+            </button>
+
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-12">
+               <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      selectedOrder.status === 'Delivered' ? 'bg-green-100 text-green-700' : 
+                      selectedOrder.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 
+                      'bg-orange-100 text-orange-700'
+                    }`}>
+                      {selectedOrder.status === 'Delivered' ? 'ডেলিভারি সম্পন্ন' : selectedOrder.status === 'Cancelled' ? 'বাতিল' : 'প্রসেসিং'}
+                    </span>
+                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">অর্ডার নং: {selectedOrder.id}</span>
+                  </div>
+                  <h3 className="text-4xl font-black tracking-tighter text-slate-900 mb-2">অর্ডার ডিটেইলস</h3>
+                  <p className="text-slate-400 text-xs font-bold flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {new Date(selectedOrder.created_at).toLocaleString('bn-BD', { dateStyle: 'long', timeStyle: 'short' })}
+                  </p>
+               </div>
+               <div className="flex gap-3">
+                  <a 
+                    href={`https://wa.me/88${selectedOrder.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`আপনার অর্ডার #${selectedOrder.id} নিয়ে কিছু তথ্য জানতে চাচ্ছি।`)}`} 
+                    target="_blank" 
+                    className="flex items-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-2xl font-black text-sm hover:scale-105 transition-all shadow-lg shadow-green-100"
+                  >
+                    <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    হোয়াটসঅ্যাপ মেসেজ
+                  </a>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+              <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">কাস্টমার প্রোফাইল</h4>
+                <div className="space-y-4">
+                   <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-xl">👤</div>
+                     <div>
+                        <div className="text-[10px] text-slate-400 font-black uppercase">নাম</div>
+                        <div className="font-black text-slate-800 text-lg">{selectedOrder.customerName}</div>
+                     </div>
+                   </div>
+                   <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-xl">📞</div>
+                     <div>
+                        <div className="text-[10px] text-slate-400 font-black uppercase">মোবাইল</div>
+                        <a href={`tel:${selectedOrder.customerPhone}`} className="font-black text-green-700 text-lg hover:underline">{selectedOrder.customerPhone}</a>
+                     </div>
+                   </div>
+                </div>
+              </div>
+              <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">ডেলিভারি পয়েন্ট</h4>
+                <div className="space-y-4">
+                   <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-xl">📍</div>
+                     <div>
+                        <div className="text-[10px] text-slate-400 font-black uppercase">লোকেশন (চবি ক্যাম্পাস)</div>
+                        <div className="font-black text-slate-800 text-lg">{selectedOrder.location}</div>
+                     </div>
+                   </div>
+                   <div className="flex items-center gap-4 opacity-50">
+                     <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-xl">🚚</div>
+                     <div>
+                        <div className="text-[10px] text-slate-400 font-black uppercase">ডেলিভারি সার্ভিস</div>
+                        <div className="font-black text-slate-800 text-lg">ফ্রেশ প্যাভিলিয়ন ওন-ক্যাম্পাস</div>
+                     </div>
+                   </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-12">
+               <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">অর্ডার আইটেম লিস্ট</h4>
+                  <span className="text-[10px] font-black text-slate-400 uppercase">{selectedOrder.items.length} টি পণ্য</span>
+               </div>
+               <div className="border border-slate-100 rounded-[2.5rem] overflow-hidden">
+                  <table className="w-full text-left">
+                     <thead className="bg-slate-50 border-b border-slate-100">
+                        <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                           <th className="px-6 py-4">পণ্য</th>
+                           <th className="px-6 py-4 text-center">পরিমাণ</th>
+                           <th className="px-6 py-4 text-right">দাম</th>
+                           <th className="px-6 py-4 text-right">মোট</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-100">
+                        {selectedOrder.items.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                             <td className="px-6 py-4">
+                                <div className="flex items-center gap-4">
+                                   <img src={item.image || FALLBACK_IMAGE} className="w-12 h-12 rounded-xl object-cover shadow-sm border border-slate-100" />
+                                   <div className="font-black text-slate-800 text-sm">{item.name}</div>
+                                </div>
+                             </td>
+                             <td className="px-6 py-4 text-center">
+                                <span className="bg-slate-100 px-3 py-1 rounded-lg text-xs font-black text-slate-600">
+                                   {item.quantity} {item.unit}
+                                </span>
+                             </td>
+                             <td className="px-6 py-4 text-right font-black text-slate-400 text-sm">৳{item.price}</td>
+                             <td className="px-6 py-4 text-right font-black text-slate-900">৳{item.price * item.quantity}</td>
+                          </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </div>
+            </div>
+
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8 p-10 bg-slate-900 rounded-[3rem] text-white shadow-2xl">
+               <div className="w-full md:w-auto text-center md:text-left">
+                  <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest block mb-2">সর্বমোট পরিশোধযোগ্য (Grand Total)</span>
+                  <div className="text-5xl font-black tracking-tighter text-green-400">৳{selectedOrder.totalPrice}</div>
+               </div>
+               <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                  <div className="flex flex-col gap-2 w-full sm:w-48">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-2">অর্ডার স্ট্যাটাস আপডেট</span>
+                    <select 
+                      value={selectedOrder.status} 
+                      onChange={e => {
+                        const newStatus = e.target.value as Order['status'];
+                        onUpdateOrderStatus(selectedOrder.id, newStatus);
+                        setSelectedOrder({...selectedOrder, status: newStatus});
+                      }} 
+                      className="w-full bg-white/10 border-2 border-white/10 rounded-2xl px-5 py-4 font-black text-white text-sm outline-none focus:border-green-500 focus:bg-white/20 transition-all cursor-pointer appearance-none"
+                    >
+                      <option value="Pending" className="text-slate-900">Pending (প্রসেসিং)</option>
+                      <option value="Delivered" className="text-slate-900">Delivered (সম্পন্ন)</option>
+                      <option value="Cancelled" className="text-slate-900">Cancelled (বাতিল)</option>
+                    </select>
+                  </div>
+                  <button onClick={() => setSelectedOrder(null)} className="w-full sm:w-auto px-10 py-5 bg-white text-slate-900 font-black rounded-2xl hover:bg-slate-100 hover:scale-105 transition-all text-sm mt-4 sm:mt-0">বন্ধ করুন</button>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Product Modal */}
       {showProductModal && (

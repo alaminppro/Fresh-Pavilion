@@ -57,6 +57,7 @@ const App: React.FC = () => {
       return;
     }
     try {
+      // Individual table fetching to prevent crash on single table failure
       const [
         { data: dbProducts },
         { data: dbOrders },
@@ -73,7 +74,8 @@ const App: React.FC = () => {
         supabase.from('customers').select('*').order('total_spent', { ascending: false })
       ]);
       
-      setProducts(dbProducts && dbProducts.length > 0 ? (dbProducts as Product[]) : (INITIAL_PRODUCTS as Product[]));
+      if (dbProducts && dbProducts.length > 0) setProducts(dbProducts as Product[]);
+      else setProducts(INITIAL_PRODUCTS as Product[]);
       
       if (dbOrders) {
         const mappedOrders: Order[] = dbOrders.map((o: any) => ({
@@ -102,63 +104,65 @@ const App: React.FC = () => {
       }
       setLastSync(new Date());
     } catch (err) {
-      console.error("Critical error fetching data:", err);
+      console.error("Critical error fetching data from Supabase:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
   const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'status'>): Promise<boolean> => {
-    const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
-    const now = new Date().toISOString();
-
-    const dbOrderPayload = {
-      id: orderId,
-      customer_name: orderData.customerName,
-      customer_phone: orderData.customerPhone,
-      location: orderData.location,
-      items: orderData.items,
-      total_price: orderData.totalPrice,
-      status: 'Pending',
-      created_at: now
-    };
-
-    if (isSupabaseConfigured && supabase) {
-      const { error: orderError } = await supabase.from('orders').insert([dbOrderPayload]);
-      if (orderError) {
-        console.error("Order insertion failed:", orderError);
-        alert("অর্ডার সম্পন্ন করা যায়নি: " + orderError.message);
-        return false;
-      }
-      
-      try {
-        const { data: existingCust } = await supabase
-          .from('customers')
-          .select('*')
-          .eq('phone', orderData.customerPhone)
-          .maybeSingle();
-
-        const customerPayload = {
-          phone: orderData.customerPhone,
-          name: orderData.customerName,
-          last_location: orderData.location,
-          total_orders: (existingCust?.total_orders || 0) + 1,
-          total_spent: (existingCust?.total_spent || 0) + orderData.totalPrice
-        };
-
-        await supabase.from('customers').upsert([customerPayload], { onConflict: 'phone' });
-      } catch (custErr) {
-        console.warn("Customer statistics update failed", custErr);
-      }
-      
-      setCart([]);
-      await fetchInitialData(); 
-      return true;
-    } else {
+    if (!isSupabaseConfigured || !supabase) {
+      const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
+      const now = new Date().toISOString();
       const localOrder: Order = { ...orderData, id: orderId, status: 'Pending', created_at: now };
       setOrders(prev => [localOrder, ...prev]);
       setCart([]);
       return true;
+    }
+
+    try {
+      const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
+      const now = new Date().toISOString();
+
+      // 1. Insert Order
+      const { error: orderError } = await supabase.from('orders').insert([{
+        id: orderId,
+        customer_name: orderData.customerName,
+        customer_phone: orderData.customerPhone,
+        location: orderData.location,
+        items: orderData.items,
+        total_price: orderData.totalPrice,
+        status: 'Pending',
+        created_at: now
+      }]);
+
+      if (orderError) throw orderError;
+
+      // 2. Sync Customer Data
+      const { data: existingCust } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('phone', orderData.customerPhone)
+        .maybeSingle();
+
+      const customerPayload = {
+        phone: orderData.customerPhone,
+        name: orderData.customerName,
+        last_location: orderData.location,
+        total_orders: (existingCust?.total_orders || 0) + 1,
+        total_spent: (existingCust?.total_spent || 0) + orderData.totalPrice,
+        updated_at: now
+      };
+
+      await supabase.from('customers').upsert([customerPayload], { onConflict: 'phone' });
+      
+      setCart([]);
+      await fetchInitialData(); 
+      return true;
+    } catch (err: any) {
+      console.error("Order process failed:", err);
+      alert("অর্ডার সম্পন্ন করা যায়নি: " + (err.message || "সার্ভার এরর"));
+      return false;
     }
   };
 

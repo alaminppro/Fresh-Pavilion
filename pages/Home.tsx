@@ -38,8 +38,8 @@ export const Home: React.FC<HomeProps> = ({
         <div className="relative z-10 max-w-7xl mx-auto px-4 w-full">
           <div className="max-w-2xl bg-white/5 backdrop-blur-xl p-10 rounded-[3rem] border border-white/10 shadow-2xl">
             <span className="inline-block px-4 py-1.5 bg-green-500 text-white text-[10px] font-black uppercase tracking-widest rounded-full mb-6">ক্যাম্পাস ডেলিভারি চালু আছে 🎓</span>
-            <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-[1.4] tracking-tight">
-              <span className="block mb-4">{siteName}</span>
+            <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-[1.8] tracking-tight">
+              <span className="block mb-6">{siteName}</span>
               <span style={{ color: COLORS.SECONDARY }} className="block">অর্গানিক ও খাঁটি</span>
             </h1>
             <p className="text-xl text-gray-200/90 mb-10 leading-relaxed font-medium">সরাসরি কৃষকের ঘর থেকে সংগৃহীত খাঁটি পণ্য এখন আপনার হাতের নাগালে। চবি শিক্ষার্থীদের একটি নিজস্ব উদ্যোগ।</p>

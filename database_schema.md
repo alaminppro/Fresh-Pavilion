@@ -1,48 +1,48 @@
 
-# Fresh Pavilion - Database Schema Design (PostgreSQL/Relational)
+# Fresh Pavilion - Supabase Database Schema
 
-## 1. `admins` Table
-Stores administrative users with hashed credentials.
-- `id` (UUID, PK)
-- `username` (VARCHAR, Unique)
-- `password_hash` (TEXT)
-- `email` (VARCHAR, Unique)
-- `created_at` (TIMESTAMP)
+To ensure the app works correctly with Supabase, create the following tables in your Supabase project using the SQL Editor or Table Editor.
 
-## 2. `products` Table
-Stores product details managed by the admin.
-- `id` (UUID, PK)
-- `name_bn` (VARCHAR) - Bengali Name
-- `name_en` (VARCHAR) - English Name
-- `description_bn` (TEXT)
-- `price` (DECIMAL)
-- `stock_quantity` (INTEGER)
-- `image_url` (TEXT)
-- `category` (VARCHAR)
-- `updated_at` (TIMESTAMP)
+## 1. `products` Table
+- `id` (UUID, PK, default: uuid_generate_v4())
+- `name` (TEXT)
+- `price` (NUMERIC)
+- `description` (TEXT)
+- `image` (TEXT)
+- `category` (TEXT)
+- `stock` (INTEGER)
+- `unit` (TEXT)
+- `created_at` (TIMESTAMP WITH TIME ZONE, default: now())
 
-## 3. `orders` Table
-Stores order details and delivery information.
-- `id` (UUID, PK)
-- `customer_name` (VARCHAR)
-- `customer_phone` (VARCHAR)
-- `delivery_location` (ENUM: 'Zero Point', 'Shuttle Station', 'One Stop', 'Halls')
-- `total_price` (DECIMAL)
-- `order_status` (ENUM: 'Pending', 'Processing', 'Delivered', 'Cancelled')
-- `created_at` (TIMESTAMP)
+## 2. `orders` Table
+- `id` (TEXT, PK) - e.g., #FP-123456
+- `customer_name` (TEXT)
+- `customer_phone` (TEXT)
+- `location` (TEXT)
+- `items` (JSONB) - Stores array of products
+- `total_price` (NUMERIC)
+- `status` (TEXT) - 'Pending', 'Delivered', 'Cancelled'
+- `created_at` (TIMESTAMP WITH TIME ZONE, default: now())
 
-## 4. `order_items` Table
-Junction table for products in an order.
-- `id` (UUID, PK)
-- `order_id` (UUID, FK -> orders.id)
-- `product_id` (UUID, FK -> products.id)
-- `quantity` (INTEGER)
-- `price_at_order` (DECIMAL)
+## 3. `customers` Table (Crucial for CRM)
+- `phone` (TEXT, PK, Unique)
+- `name` (TEXT)
+- `total_orders` (INTEGER, default: 0)
+- `total_spent` (NUMERIC, default: 0)
+- `last_location` (TEXT)
+- `updated_at` (TIMESTAMP WITH TIME ZONE, default: now())
 
-## 5. `customer_details` Table
-Optional profiling for returning students.
-- `id` (UUID, PK)
-- `phone` (VARCHAR, Unique)
-- `hall_name` (VARCHAR)
-- `department` (VARCHAR)
-- `last_order_at` (TIMESTAMP)
+## 4. `categories` Table
+- `id` (BIGINT, PK, Generated Always)
+- `name` (TEXT, Unique)
+
+## 5. `admin_users` Table
+- `id` (UUID, PK, default: uuid_generate_v4())
+- `username` (TEXT, Unique)
+- `password` (TEXT)
+- `phone` (TEXT)
+- `role` (TEXT) - 'admin' or 'staff'
+
+## 6. `site_settings` Table
+- `key` (TEXT, PK, Unique)
+- `value` (TEXT)

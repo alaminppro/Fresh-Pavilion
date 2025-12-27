@@ -7,8 +7,8 @@ interface FloatingWhatsAppProps {
 
 export const FloatingWhatsApp: React.FC<FloatingWhatsAppProps> = ({ phoneNumber }) => {
   const handleClick = () => {
-    // The user requested this specific number: +880 1630-145305
-    const targetNumber = '8801630145305';
+    // Using the latest corrected number provided by the user: +880 1400-065088
+    const targetNumber = '8801400065088';
     const greeting = encodeURIComponent("Hello Fresh Pavilion, I want to know about your products.");
     window.open(`https://wa.me/${targetNumber}?text=${greeting}`, '_blank');
   };

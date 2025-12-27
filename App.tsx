@@ -25,7 +25,6 @@ interface SiteSettings {
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
-  const [prevPage, setPrevPage] = useState<Page>('home');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>(['মধু ও তেল', 'শুকনো খাবার', 'মশলা ও গুড়', 'ফল ও সবজি', 'স্বাস্থ্য', 'অন্যান্য']);
@@ -43,9 +42,40 @@ const App: React.FC = () => {
     site_name: 'ফ্রেশ প্যাভিলিয়ন',
     logo: null,
     hero_image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1600',
-    whatsapp_number: '01630145305',
-    support_phone: '01630145305'
+    whatsapp_number: '01400065088',
+    support_phone: '01400065088'
   });
+
+  // Routing Logic: Sync state with URL Hash
+  useEffect(() => {
+    const handleRouting = () => {
+      const hash = window.location.hash.replace('#', '');
+      
+      if (hash === 'shop') {
+        setCurrentPage('shop');
+        setSelectedProductId(null);
+      } else if (hash === 'admin') {
+        setCurrentPage('admin');
+        setSelectedProductId(null);
+      } else if (hash.startsWith('product-')) {
+        const id = hash.replace('product-', '');
+        setSelectedProductId(id);
+        setCurrentPage('product-detail');
+      } else {
+        setCurrentPage('home');
+        setSelectedProductId(null);
+      }
+    };
+
+    window.addEventListener('hashchange', handleRouting);
+    handleRouting(); // Initial routing on load
+    
+    return () => window.removeEventListener('hashchange', handleRouting);
+  }, []);
+
+  const navigateTo = (page: string) => {
+    window.location.hash = page === 'home' ? '' : page;
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -197,15 +227,16 @@ const App: React.FC = () => {
   };
 
   const openProductDetail = (id: string) => {
-    setPrevPage(currentPage);
-    setSelectedProductId(id);
-    setCurrentPage('product-detail');
+    window.location.hash = `product-${id}`;
     window.scrollTo(0, 0);
   };
 
   const closeProductDetail = () => {
-    setCurrentPage(prevPage);
-    setSelectedProductId(null);
+    if (window.location.hash.startsWith('#product-')) {
+       window.history.back();
+    } else {
+       navigateTo('home');
+    }
   };
 
   const handleUpdateSetting = async (key: string, value: string) => {
@@ -217,7 +248,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Define isAdminMode to be used in narrowing blocks
   const isAdminMode = currentPage === 'admin';
 
   if (isLoading) return <div className="min-h-screen flex flex-col items-center justify-center font-black text-green-600 bg-white"><div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mb-4"></div>লোডিং হচ্ছে...</div>;
@@ -226,7 +256,7 @@ const App: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-[#FDFDFD]">
       {!isAdminMode && (
         <Navbar 
-          onNavigate={(p) => { setPrevPage(currentPage); setCurrentPage(p as Page); setSelectedProductId(null); }} 
+          onNavigate={navigateTo} 
           currentPage={currentPage} 
           cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)} 
           wishlistCount={wishlist.length} 
@@ -240,7 +270,7 @@ const App: React.FC = () => {
       <main className={`flex-grow ${isAdminMode ? '' : 'pt-16 md:pt-20'} mx-auto w-full pb-16 md:pb-0`}>
         {currentPage === 'home' && (
           <Home 
-            products={products} wishlist={wishlist} onShopNow={() => setCurrentPage('shop')} onAddToCart={addToCart} 
+            products={products} wishlist={wishlist} onShopNow={() => navigateTo('shop')} onAddToCart={addToCart} 
             onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
             onProductClick={openProductDetail} 
             heroImage={settings.hero_image} siteName={settings.site_name} whatsappNumber={settings.whatsapp_number}
@@ -268,7 +298,7 @@ const App: React.FC = () => {
             onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); setOrders(orders.map(o => o.id === id ? { ...o, status } : o)); }}
             onSeedDatabase={fetchInitialData}
             onSyncCustomers={syncCustomersFromOrders}
-            onBackToSite={() => setCurrentPage('home')} 
+            onBackToSite={() => navigateTo('home')} 
             settings={{ ...settings, lastSync }} onUpdateSetting={handleUpdateSetting}
           />
         )}
@@ -289,17 +319,16 @@ const App: React.FC = () => {
       {!isAdminMode && (
         <>
           <Footer siteName={settings.site_name} supportPhone={settings.support_phone} logo={settings.logo} />
-          {/* Mobile Bottom Navigation Bar */}
           <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-slate-100 z-[140] h-16 px-6 flex items-center justify-between pb-safe">
             <BottomNavItem 
               active={currentPage === 'home'} 
-              onClick={() => setCurrentPage('home')} 
+              onClick={() => navigateTo('home')} 
               icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>} 
               label="হোম"
             />
             <BottomNavItem 
               active={currentPage === 'shop'} 
-              onClick={() => setCurrentPage('shop')} 
+              onClick={() => navigateTo('shop')} 
               icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>} 
               label="শপ"
             />
@@ -310,9 +339,8 @@ const App: React.FC = () => {
               label="উইশ"
             />
             <BottomNavItem 
-              /* Fix: Use pre-calculated isAdminMode to avoid type narrowing issues in narrowed scope where currentPage is known not to be 'admin' */
               active={isAdminMode} 
-              onClick={() => setCurrentPage('admin')} 
+              onClick={() => navigateTo('admin')} 
               icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>} 
               label="অ্যাডমিন"
             />

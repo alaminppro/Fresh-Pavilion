@@ -95,16 +95,39 @@ export const Admin: React.FC<AdminProps> = ({
   };
 
   const downloadCSV = (data: any[], filename: string) => {
-    if (data.length === 0) return;
-    const headers = Object.keys(data[0]).join(',');
-    const rows = data.map(row => 
-      Object.values(row).map(val => `"${val}"`).join(',')
-    ).join('\n');
-    const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows;
-    const encodedUri = encodeURI(csvContent);
+    if (!data || data.length === 0) {
+      alert("কোন ডাটা নেই!");
+      return;
+    }
+    
+    const headers = Object.keys(data[0]);
+    const csvRows = [];
+    
+    // Add Headers
+    csvRows.push(headers.join(','));
+    
+    // Add Data
+    for (const row of data) {
+      const values = headers.map(header => {
+        const val = row[header];
+        // Special handling for items array in orders
+        if (header === 'items' && Array.isArray(val)) {
+          const itemNames = val.map(i => `${i.name} x${i.quantity}`).join(' | ');
+          return `"${itemNames}"`;
+        }
+        // General cleanup
+        const escaped = ('' + (val ?? '')).replace(/"/g, '""');
+        return `"${escaped}"`;
+      });
+      csvRows.push(values.join(','));
+    }
+    
+    const csvString = "\ufeff" + csvRows.join('\n'); // Adding BOM for UTF-8 Excel support
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `${filename}.csv`);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -195,13 +218,17 @@ export const Admin: React.FC<AdminProps> = ({
         {activeTab === 'Customers' && (
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xl font-black">গ্রাহক তালিকা</h2>
-              <button onClick={() => downloadCSV(customers, 'fp_customers')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs flex items-center gap-2">📥 CSV ডাউনলোড</button>
+              <h2 className="text-xl font-black">গ্রাহক তালিকা ({customers.length})</h2>
+              <button onClick={() => downloadCSV(customers, 'fp_customers')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs flex items-center gap-2 shadow-md">
+                📥 CSV ডাউনলোড
+              </button>
             </div>
             <table className="w-full text-left">
               <thead><tr className="border-b text-[10px] font-black text-slate-400 uppercase tracking-widest"><th className="pb-4">নাম ও ফোন</th><th className="pb-4">অর্ডার সংখ্যা</th><th className="pb-4">মোট কেনাকাটা</th><th className="pb-4">শেষ লোকেশন</th></tr></thead>
               <tbody className="divide-y">
-                {customers.map(c => (
+                {customers.length === 0 ? (
+                  <tr><td colSpan={4} className="py-10 text-center text-slate-400 font-bold">এখনো কোনো গ্রাহক ডাটা তৈরি হয়নি।</td></tr>
+                ) : customers.map(c => (
                   <tr key={c.phone} className="hover:bg-slate-50 transition-colors">
                     <td className="py-4"><div className="font-black text-sm">{c.name || 'Unknown'}</div><div className="text-[10px] text-slate-400 font-bold">{c.phone}</div></td>
                     <td className="py-4 font-black">{c.total_orders} টি</td>
@@ -218,7 +245,9 @@ export const Admin: React.FC<AdminProps> = ({
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
              <div className="flex justify-between items-center mb-8">
               <h2 className="text-xl font-black">অর্ডার রেকর্ড</h2>
-              <button onClick={() => downloadCSV(orders, 'fp_orders')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs flex items-center gap-2">📥 CSV ডাউনলোড</button>
+              <button onClick={() => downloadCSV(orders, 'fp_orders')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs flex items-center gap-2 shadow-md">
+                📥 CSV ডাউনলোড
+              </button>
             </div>
             <table className="w-full text-left">
               <thead><tr className="border-b text-[10px] uppercase font-black text-slate-400"><th className="pb-4">আইডি</th><th className="pb-4">গ্রাহক</th><th className="pb-4">লোকেশন</th><th className="pb-4">টাকা</th><th className="pb-4">অবস্থা</th><th className="pb-4 text-right">আপডেট</th></tr></thead>

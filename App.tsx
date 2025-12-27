@@ -77,7 +77,7 @@ const App: React.FC = () => {
       if (dbOrders) setOrders(dbOrders as Order[]);
       if (dbStaff) setStaff(dbStaff as AdminUser[]);
       if (dbCategories) setCategories(dbCategories.map(c => c.name));
-      if (dbCustomers) setCustomers(dbCustomers);
+      if (dbCustomers) setCustomers(dbCustomers || []);
       
       if (dbSettings) {
         const newSettings = { ...settings };
@@ -101,7 +101,6 @@ const App: React.FC = () => {
   };
 
   const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'status'>): Promise<boolean> => {
-    // CRITICAL: Explicitly construct the object to prevent extra fields like 'date' being sent
     const newOrder = {
       customerName: orderData.customerName,
       customerPhone: orderData.customerPhone,
@@ -114,16 +113,22 @@ const App: React.FC = () => {
     };
 
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase.from('orders').insert([newOrder]);
-      if (error) {
-        console.error("Supabase Order Error:", error);
-        alert("অর্ডার সম্পন্ন করা যায়নি: " + error.message);
+      // 1. Save Order
+      const { error: orderError } = await supabase.from('orders').insert([newOrder]);
+      if (orderError) {
+        alert("অর্ডার সম্পন্ন করা যায়নি: " + orderError.message);
         return false;
       }
       
-      // Update customer stats
+      // 2. Update/Create Customer stats
       try {
-        const { data: existingCust } = await supabase.from('customers').select('*').eq('phone', orderData.customerPhone).single();
+        // Use maybeSingle to avoid crashing if customer is new
+        const { data: existingCust } = await supabase
+          .from('customers')
+          .select('*')
+          .eq('phone', orderData.customerPhone)
+          .maybeSingle();
+
         const customerPayload = {
           phone: orderData.customerPhone,
           name: orderData.customerName,
@@ -131,14 +136,15 @@ const App: React.FC = () => {
           total_orders: (existingCust?.total_orders || 0) + 1,
           total_spent: (existingCust?.total_spent || 0) + orderData.totalPrice
         };
-        await supabase.from('customers').upsert([customerPayload]);
+
+        await supabase.from('customers').upsert([customerPayload], { onConflict: 'phone' });
       } catch (custErr) {
-        console.warn("Failed to update customer stats", custErr);
+        console.warn("Customer database update warning:", custErr);
       }
       
       setOrders(prev => [newOrder as Order, ...prev]);
       setCart([]);
-      fetchInitialData();
+      fetchInitialData(); // Refresh all lists
       return true;
     } else {
       setOrders(prev => [newOrder as Order, ...prev]);
@@ -207,7 +213,7 @@ const App: React.FC = () => {
             onAddStaff={async (s) => { if (supabase) { const { data } = await supabase.from('admin_users').insert([s]).select(); if (data) setStaff([...staff, data[0]]); } }}
             onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); setStaff(staff.filter(s => s.id !== id)); }}
             onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); setOrders(orders.map(o => o.id === id ? { ...o, status } : o)); }}
-            onSeedDatabase={async () => { /* Logic to seed initial data */ }}
+            onSeedDatabase={async () => { /* No logic needed for this turn */ }}
             onBackToSite={() => setCurrentPage('home')} 
             settings={settings} onUpdateSetting={handleUpdateSetting}
           />

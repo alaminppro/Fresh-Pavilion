@@ -35,6 +35,7 @@ export const Home: React.FC<HomeProps> = ({
 }) => {
   const isInWishlist = (id: string) => wishlist.some(p => p.id === id);
 
+  // Filter products based on Admin flags
   const featuredProducts = products.filter(p => p.isFeatured).slice(0, 4);
   const bestSellingProducts = products.filter(p => p.isBestSelling).slice(0, 4);
   const newArrivals = products.filter(p => p.isNew).slice(0, 4);
@@ -82,11 +83,11 @@ export const Home: React.FC<HomeProps> = ({
           </div>
         </section>
 
-        {/* Automatic Static Sections */}
+        {/* Automatic Static Sections (Featured, Bestselling, New) */}
         {featuredProducts.length > 0 && (
           <ProductSection 
             title="জনপ্রিয় পণ্যসমূহ" 
-            subtitle="Featured Selection" 
+            subtitle="POPULAR SELECTION" 
             products={featuredProducts} 
             onAddToCart={onAddToCart} 
             onToggleWishlist={onToggleWishlist} 
@@ -99,7 +100,7 @@ export const Home: React.FC<HomeProps> = ({
         {bestSellingProducts.length > 0 && (
           <ProductSection 
             title="বেস্ট সেলিং" 
-            subtitle="Top Rated Choices" 
+            subtitle="BEST SELLING ITEMS" 
             products={bestSellingProducts} 
             onAddToCart={onAddToCart} 
             onToggleWishlist={onToggleWishlist} 
@@ -112,7 +113,7 @@ export const Home: React.FC<HomeProps> = ({
         {newArrivals.length > 0 && (
           <ProductSection 
             title="নতুন পণ্য" 
-            subtitle="Fresh Arrivals" 
+            subtitle="NEW ARRIVALS" 
             products={newArrivals} 
             onAddToCart={onAddToCart} 
             onToggleWishlist={onToggleWishlist} 
@@ -127,7 +128,7 @@ export const Home: React.FC<HomeProps> = ({
           <div className="text-center mb-20">
             <h2 className="text-4xl font-black text-slate-800 mb-4 tracking-tight">ক্যাটাগরি অনুযায়ী দেখুন</h2>
             <div className="w-24 h-1.5 bg-green-600 mx-auto rounded-full mb-4"></div>
-            <p className="text-slate-400 font-bold uppercase tracking-[0.4em] text-[10px]">Explore our dynamic collections</p>
+            <p className="text-slate-400 font-bold uppercase tracking-[0.4em] text-[10px]">EXPLORE OUR DYNAMIC COLLECTIONS</p>
           </div>
           
           {/* Dynamic Category Sections */}
@@ -140,7 +141,7 @@ export const Home: React.FC<HomeProps> = ({
                 <ProductSection 
                   key={cat}
                   title={cat} 
-                  subtitle={getCategoryEnglishName(cat)} 
+                  subtitle={getCategoryEnglishName(cat).toUpperCase()} 
                   products={catProducts.slice(0, 4)}
                   onAddToCart={onAddToCart} 
                   onToggleWishlist={onToggleWishlist} 
@@ -167,17 +168,12 @@ export const Home: React.FC<HomeProps> = ({
                 onClick={onShopNow} 
                 className="group relative bg-white border border-slate-100 rounded-[2.5rem] p-12 text-center transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 cursor-pointer overflow-hidden"
               >
-                {/* Left Sliding Green Bar */}
                 <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-green-600 scale-y-0 group-hover:scale-y-100 transition-transform duration-300 origin-center"></div>
-                
-                {/* Centered Icon Container */}
                 <div className="w-20 h-20 bg-green-50/50 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-all duration-300 group-hover:bg-green-100">
                   <svg className="w-10 h-10 text-green-600 group-hover:rotate-6 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                   </svg>
                 </div>
-                
-                {/* Category Name */}
                 <h4 className="font-black text-slate-800 text-xl tracking-tight mb-1">{cat}</h4>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-300">View Products</p>
               </div>
@@ -193,7 +189,7 @@ const ProductSection = ({ title, subtitle, products, onAddToCart, onToggleWishli
   <section className="scroll-mt-24">
     <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
       <div>
-        <div className="text-green-600 font-black text-[11px] uppercase tracking-[0.5em] mb-3">{subtitle}</div>
+        <div className="text-green-600 font-black text-[11px] uppercase tracking-[0.4em] mb-3">{subtitle}</div>
         <h2 className="text-5xl font-black text-slate-800 tracking-tighter">{title}</h2>
       </div>
       <button onClick={onSeeMore} className="group px-8 py-4 bg-slate-900 hover:bg-green-700 text-white font-black text-sm rounded-2xl transition-all flex items-center gap-3 shadow-xl">

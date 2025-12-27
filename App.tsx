@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>(['খাবার', 'পানীয়', 'স্বাস্থ্য', 'অন্যান্য']);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<Product[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -46,9 +47,13 @@ const App: React.FC = () => {
     try {
       const { data: dbProducts } = await supabase.from('products').select('*').order('created_at', { ascending: false });
       const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      const { data: dbCategories } = await supabase.from('categories').select('name');
       
       setProducts(dbProducts && dbProducts.length > 0 ? (dbProducts as Product[]) : (INITIAL_PRODUCTS as Product[]));
       if (dbOrders) setOrders(dbOrders as Order[]);
+      if (dbCategories && dbCategories.length > 0) {
+        setCategories(dbCategories.map(c => c.name));
+      }
     } catch (err) {
       console.error("Error fetching data:", err);
       setProducts(INITIAL_PRODUCTS as Product[]);
@@ -61,7 +66,6 @@ const App: React.FC = () => {
     localStorage.setItem('fp_cart', JSON.stringify(cart));
     localStorage.setItem('fp_wishlist', JSON.stringify(wishlist));
     
-    // Only use localStorage as a fallback for products and orders if Supabase is NOT configured
     if (!isSupabaseConfigured) {
       localStorage.setItem('fp_products', JSON.stringify(products));
       localStorage.setItem('fp_orders', JSON.stringify(orders));
@@ -74,7 +78,7 @@ const App: React.FC = () => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('products').insert([productData]).select();
       if (error) {
-        alert("Error adding product to Supabase: " + error.message);
+        alert("Error adding product: " + error.message);
         return;
       }
       if (data) setProducts([data[0] as Product, ...products]);
@@ -86,11 +90,7 @@ const App: React.FC = () => {
 
   const handleUpdateProduct = async (updatedProduct: Product) => {
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase
-        .from('products')
-        .update(updatedProduct)
-        .eq('id', updatedProduct.id);
-      
+      const { error } = await supabase.from('products').update(updatedProduct).eq('id', updatedProduct.id);
       if (error) {
         alert("Error updating product: " + error.message);
         return;
@@ -114,13 +114,35 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAddCategory = async (name: string) => {
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('categories').insert([{ name }]);
+      if (error) {
+        alert("Error adding category: " + error.message);
+        return;
+      }
+      setCategories([...categories, name]);
+    } else {
+      setCategories([...categories, name]);
+    }
+  };
+
+  const handleDeleteCategory = async (name: string) => {
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('categories').delete().eq('name', name);
+      if (error) {
+        alert("Error deleting category: " + error.message);
+        return;
+      }
+      setCategories(categories.filter(c => c !== name));
+    } else {
+      setCategories(categories.filter(c => c !== name));
+    }
+  };
+
   const handleUpdateOrderStatus = async (id: string, status: Order['status']) => {
     if (isSupabaseConfigured && supabase) {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', id);
-      
+      const { error } = await supabase.from('orders').update({ status }).eq('id', id);
       if (error) {
         alert("Error updating order: " + error.message);
         return;
@@ -176,11 +198,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSupportClick = () => {
-    const message = encodeURIComponent("হ্যালো ফ্রেশ প্যাভিলিয়ন, আমি একটি পণ্য সম্পর্কে জানতে চাই।");
-    window.open(`https://wa.me/8801630145305?text=${message}`, '_blank');
-  };
-
   const isAdminMode = currentPage === 'admin';
 
   if (isLoading) {
@@ -206,31 +223,21 @@ const App: React.FC = () => {
       )}
       <main className={`flex-grow ${isAdminMode ? '' : 'pt-20'}`}>
         {currentPage === 'home' && (
-          <Home 
-            products={products} 
-            wishlist={wishlist} 
-            onShopNow={() => setCurrentPage('shop')} 
-            onAddToCart={addToCart} 
-            onToggleWishlist={toggleWishlist} 
-            onProductClick={openProductDetail} 
-          />
+          <Home products={products} wishlist={wishlist} onShopNow={() => setCurrentPage('shop')} onAddToCart={addToCart} onToggleWishlist={toggleWishlist} onProductClick={openProductDetail} />
         )}
         {currentPage === 'shop' && (
-          <Shop 
-            products={products} 
-            wishlist={wishlist} 
-            onAddToCart={addToCart} 
-            onToggleWishlist={toggleWishlist} 
-            onProductClick={openProductDetail} 
-          />
+          <Shop products={products} wishlist={wishlist} onAddToCart={addToCart} onToggleWishlist={toggleWishlist} onProductClick={openProductDetail} />
         )}
         {currentPage === 'admin' && (
           <Admin 
             products={products} 
             orders={orders} 
+            categories={categories}
             onAddProduct={handleAddProduct} 
             onDeleteProduct={handleDeleteProduct} 
             onUpdateProduct={handleUpdateProduct} 
+            onAddCategory={handleAddCategory}
+            onDeleteCategory={handleDeleteCategory}
             onUpdateOrderStatus={handleUpdateOrderStatus} 
             onBackToSite={() => setCurrentPage('home')} 
           />
@@ -249,34 +256,8 @@ const App: React.FC = () => {
       </main>
       {!isAdminMode && <Footer />}
       
-      {/* Floating Support Button */}
-      {!isAdminMode && (
-        <button 
-          onClick={handleSupportClick}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-green-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-[90] animate-bounce"
-          title="সরাসরি সহায়তা"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16">
-            <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
-          </svg>
-        </button>
-      )}
-
-      <CartSidebar 
-        isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)} 
-        items={cart} 
-        onRemove={(id) => setCart(cart.filter(i => i.id !== id))} 
-        onUpdateQuantity={(id, d) => setCart(cart.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + d)} : i))} 
-        onCheckout={createOrder} 
-      />
-      <WishlistSidebar 
-        isOpen={isWishlistOpen} 
-        onClose={() => setIsWishlistOpen(false)} 
-        items={wishlist} 
-        onAddToCart={addToCart} 
-        onRemove={toggleWishlist} 
-      />
+      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onRemove={(id) => setCart(cart.filter(i => i.id !== id))} onUpdateQuantity={(id, d) => setCart(cart.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + d)} : i))} onCheckout={createOrder} />
+      <WishlistSidebar isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} items={wishlist} onAddToCart={addToCart} onRemove={toggleWishlist} />
     </div>
   );
 };

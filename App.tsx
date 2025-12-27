@@ -35,6 +35,7 @@ const App: React.FC = () => {
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastSync, setLastSync] = useState<Date>(new Date());
   
   const [settings, setSettings] = useState<SiteSettings>({
     site_name: 'ফ্রেশ প্যাভিলিয়ন',
@@ -57,12 +58,12 @@ const App: React.FC = () => {
     }
     try {
       const [
-        { data: dbProducts, error: pErr },
-        { data: dbOrders, error: oErr },
+        { data: dbProducts },
+        { data: dbOrders },
         { data: dbCategories },
         { data: dbStaff },
         { data: dbSettings },
-        { data: dbCustomers, error: cErr }
+        { data: dbCustomers }
       ] = await Promise.all([
         supabase.from('products').select('*').order('created_at', { ascending: false }),
         supabase.from('orders').select('*').order('created_at', { ascending: false }),
@@ -72,33 +73,26 @@ const App: React.FC = () => {
         supabase.from('customers').select('*').order('total_spent', { ascending: false })
       ]);
       
-      if (pErr) console.error("Products fetch error:", pErr);
-      if (oErr) console.error("Orders fetch error:", oErr);
-      if (cErr) console.error("Customers fetch error:", cErr);
-
       setProducts(dbProducts && dbProducts.length > 0 ? (dbProducts as Product[]) : (INITIAL_PRODUCTS as Product[]));
       
-      // Map DB snake_case back to JS CamelCase for the Order interface
+      // Explicit Mapping from DB (snake_case) to State (camelCase)
       if (dbOrders) {
         const mappedOrders: Order[] = dbOrders.map((o: any) => ({
           id: o.id,
-          customerName: o.customer_name,
-          customerPhone: o.customer_phone,
+          customerName: o.customer_name, // Map customer_name -> customerName
+          customerPhone: o.customer_phone, // Map customer_phone -> customerPhone
           location: o.location,
           items: o.items,
-          totalPrice: o.total_price,
+          totalPrice: Number(o.total_price),
           status: o.status,
           created_at: o.created_at
         }));
         setOrders(mappedOrders);
-      } else {
-        setOrders([]);
       }
 
       if (dbStaff) setStaff(dbStaff as AdminUser[]);
       if (dbCategories) setCategories(dbCategories.map(c => c.name));
       if (dbCustomers) setCustomers(dbCustomers);
-      else setCustomers([]);
       
       if (dbSettings) {
         const newSettings = { ...settings };
@@ -107,6 +101,7 @@ const App: React.FC = () => {
         });
         setSettings(newSettings);
       }
+      setLastSync(new Date());
     } catch (err) {
       console.error("Critical error fetching data:", err);
     } finally {
@@ -114,18 +109,11 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateSetting = async (key: keyof SiteSettings, value: string) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-    if (isSupabaseConfigured && supabase) {
-      await supabase.from('site_settings').upsert({ key, value });
-    }
-  };
-
   const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'status'>): Promise<boolean> => {
     const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
     const now = new Date().toISOString();
 
-    // Map to DB snake_case columns
+    // EXPLICIT MAPPING to DB snake_case columns
     const dbOrderPayload = {
       id: orderId,
       customer_name: orderData.customerName,
@@ -141,12 +129,12 @@ const App: React.FC = () => {
       // 1. Insert Order
       const { error: orderError } = await supabase.from('orders').insert([dbOrderPayload]);
       if (orderError) {
-        console.error("Supabase order error:", orderError);
+        console.error("Order insertion failed:", orderError);
         alert("অর্ডার সম্পন্ন করা যায়নি: " + orderError.message);
         return false;
       }
       
-      // 2. Update/Create Customer
+      // 2. Update Customer Profile
       try {
         const { data: existingCust } = await supabase
           .from('customers')
@@ -162,23 +150,17 @@ const App: React.FC = () => {
           total_spent: (existingCust?.total_spent || 0) + orderData.totalPrice
         };
 
-        const { error: custError } = await supabase.from('customers').upsert([customerPayload]);
-        if (custError) console.error("Customer upsert error:", custError);
+        await supabase.from('customers').upsert([customerPayload], { onConflict: 'phone' });
       } catch (custErr) {
-        console.warn("Customer statistics update failed silently", custErr);
+        console.warn("Customer statistics update failed", custErr);
       }
       
       setCart([]);
-      await fetchInitialData(); // Refresh everything from source of truth
+      await fetchInitialData(); // Force refresh Admin data
       return true;
     } else {
-      // Local fallback for dev/testing
-      const localOrder: Order = {
-        ...orderData,
-        id: orderId,
-        status: 'Pending',
-        created_at: now
-      };
+      // Local fallback
+      const localOrder: Order = { ...orderData, id: orderId, status: 'Pending', created_at: now };
       setOrders(prev => [localOrder, ...prev]);
       setCart([]);
       return true;
@@ -200,9 +182,21 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
+  // Add the missing handleUpdateSetting function to fix the error in line 232
+  const handleUpdateSetting = async (key: string, value: string) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('site_settings').upsert([{ key, value }], { onConflict: 'key' });
+      } catch (err) {
+        console.error("Failed to update setting in database:", err);
+      }
+    }
+  };
+
   const isAdminMode = currentPage === 'admin';
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-black text-green-600 text-xl">ফ্রেশ প্যাভিলিয়ন লোড হচ্ছে...</div>;
+  if (isLoading) return <div className="min-h-screen flex flex-col items-center justify-center font-black text-green-600 bg-white"><div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mb-4"></div>লোডিং হচ্ছে...</div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FDFDFD]">
@@ -245,9 +239,9 @@ const App: React.FC = () => {
             onAddStaff={async (s) => { if (supabase) { const { data } = await supabase.from('admin_users').insert([s]).select(); if (data) setStaff([...staff, data[0]]); } }}
             onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); setStaff(staff.filter(s => s.id !== id)); }}
             onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); setOrders(orders.map(o => o.id === id ? { ...o, status } : o)); }}
-            onSeedDatabase={() => {}}
+            onSeedDatabase={fetchInitialData}
             onBackToSite={() => setCurrentPage('home')} 
-            settings={settings} onUpdateSetting={handleUpdateSetting}
+            settings={{ ...settings, lastSync }} onUpdateSetting={handleUpdateSetting}
           />
         )}
         {currentPage === 'product-detail' && products.find(p => p.id === selectedProductId) && (

@@ -110,12 +110,11 @@ export const Admin: React.FC<AdminProps> = ({
     for (const row of data) {
       const values = headers.map(header => {
         let val = row[header];
+        // Custom formatting for Items in Orders
         if (header === 'items' && Array.isArray(val)) {
           val = val.map(i => `${i.name} x${i.quantity}`).join(' | ');
         }
-        if (typeof val === 'object' && val !== null) {
-          val = JSON.stringify(val);
-        }
+        // Cleanup strings for CSV
         const escaped = ('' + (val ?? '')).replace(/"/g, '""');
         return `"${escaped}"`;
       });
@@ -176,7 +175,10 @@ export const Admin: React.FC<AdminProps> = ({
       <main className="flex-grow ml-64 p-10 overflow-y-auto">
         <header className="mb-10 flex justify-between items-end">
           <div><h1 className="text-4xl font-black text-slate-900 tracking-tight">{activeTab}</h1></div>
-          <div className="text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date().toLocaleDateString('bn-BD')}</div>
+          <div className="flex flex-col items-end">
+             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date().toLocaleDateString('bn-BD')}</div>
+             <button onClick={onSeedDatabase} className="text-[10px] font-black text-green-600 hover:underline uppercase tracking-tighter flex items-center gap-1">🔄 রিফ্রেশ ডাটা</button>
+          </div>
         </header>
 
         {activeTab === 'Dashboard' && (

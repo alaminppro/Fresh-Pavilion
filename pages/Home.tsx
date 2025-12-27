@@ -35,10 +35,10 @@ export const Home: React.FC<HomeProps> = ({
 }) => {
   const isInWishlist = (id: string) => wishlist.some(p => p.id === id);
 
-  // Filter products based on Admin flags
-  const featuredProducts = products.filter(p => p.isFeatured).slice(0, 4);
-  const bestSellingProducts = products.filter(p => p.isBestSelling).slice(0, 4);
-  const newArrivals = products.filter(p => p.isNew).slice(0, 4);
+  // Filter products based on flags from Admin panel
+  const featuredProducts = products.filter(p => p.isFeatured === true).slice(0, 4);
+  const bestSellingProducts = products.filter(p => p.isBestSelling === true).slice(0, 4);
+  const newArrivals = products.filter(p => p.isNew === true).slice(0, 4);
 
   return (
     <div className="space-y-0 pb-16">
@@ -83,11 +83,11 @@ export const Home: React.FC<HomeProps> = ({
           </div>
         </section>
 
-        {/* Automatic Static Sections (Featured, Bestselling, New) */}
+        {/* Automated Sections (BEFORE Category Header) */}
         {featuredProducts.length > 0 && (
           <ProductSection 
             title="জনপ্রিয় পণ্যসমূহ" 
-            subtitle="POPULAR SELECTION" 
+            subtitle="POPULAR ITEMS" 
             products={featuredProducts} 
             onAddToCart={onAddToCart} 
             onToggleWishlist={onToggleWishlist} 
@@ -100,7 +100,7 @@ export const Home: React.FC<HomeProps> = ({
         {bestSellingProducts.length > 0 && (
           <ProductSection 
             title="বেস্ট সেলিং" 
-            subtitle="BEST SELLING ITEMS" 
+            subtitle="BEST SELLING COLLECTION" 
             products={bestSellingProducts} 
             onAddToCart={onAddToCart} 
             onToggleWishlist={onToggleWishlist} 

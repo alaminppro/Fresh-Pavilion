@@ -20,6 +20,7 @@ interface AdminProps {
   onDeleteStaff: (id: string) => void;
   onUpdateOrderStatus: (id: string, status: Order['status']) => void;
   onSeedDatabase: () => void;
+  onSyncCustomers: () => void;
   onBackToSite: () => void;
   settings: any;
   onUpdateSetting: (key: string, value: string) => void;
@@ -30,7 +31,7 @@ export const Admin: React.FC<AdminProps> = ({
   onAddProduct, onDeleteProduct, onUpdateProduct,
   onAddCategory, onDeleteCategory, 
   onAddStaff, onDeleteStaff,
-  onUpdateOrderStatus, onSeedDatabase, onBackToSite,
+  onUpdateOrderStatus, onSeedDatabase, onSyncCustomers, onBackToSite,
   settings, onUpdateSetting
 }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -43,6 +44,7 @@ export const Admin: React.FC<AdminProps> = ({
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newCatName, setNewCatName] = useState('');
   const [newStaff, setNewStaff] = useState<Omit<AdminUser, 'id'>>({ username: '', password: '', phone: '', role: 'staff' });
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [formState, setFormState] = useState<Omit<Product, 'id'>>({
     name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি'
@@ -94,6 +96,14 @@ export const Admin: React.FC<AdminProps> = ({
     }
   };
 
+  const handleSync = async () => {
+    if (window.confirm('অর্ডার হিস্টোরি থেকে গ্রাহক তালিকা তৈরি করতে চান?')) {
+      setIsSyncing(true);
+      await onSyncCustomers();
+      setIsSyncing(false);
+    }
+  };
+
   const downloadCSV = (data: any[], filename: string) => {
     if (!data || data.length === 0) {
       alert("কোন ডাটা নেই!");
@@ -102,11 +112,7 @@ export const Admin: React.FC<AdminProps> = ({
     
     const headers = Object.keys(data[0]);
     const csvRows = [];
-    
-    // Header Row
     csvRows.push(headers.join(','));
-    
-    // Data Rows
     for (const row of data) {
       const values = headers.map(header => {
         let val = row[header];
@@ -118,7 +124,6 @@ export const Admin: React.FC<AdminProps> = ({
       });
       csvRows.push(values.join(','));
     }
-    
     const csvString = "\ufeff" + csvRows.join('\n');
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -229,23 +234,35 @@ export const Admin: React.FC<AdminProps> = ({
 
         {activeTab === 'Customers' && (
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xl font-black">গ্রাহক তালিকা ({customers.length})</h2>
-              <button onClick={() => downloadCSV(customers, 'fp_customers')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs shadow-md">
-                📥 CSV ডাউনলোড
-              </button>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+              <div>
+                <h2 className="text-xl font-black">গ্রাহক তালিকা ({customers.length})</h2>
+                <p className="text-[10px] text-slate-400 font-bold mt-1">স্বয়ংক্রিয়ভাবে সিঙ্ক হয়</p>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleSync} 
+                  disabled={isSyncing}
+                  className={`px-4 py-2 border-2 border-green-600 text-green-700 font-black rounded-xl text-xs transition-all flex items-center gap-2 ${isSyncing ? 'opacity-50' : 'hover:bg-green-50'}`}
+                >
+                  {isSyncing ? 'সিঙ্ক হচ্ছে...' : '🔄 গ্রাহক ডাটা সিঙ্ক'}
+                </button>
+                <button onClick={() => downloadCSV(customers, 'fp_customers')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs shadow-md">
+                  📥 CSV ডাউনলোড
+                </button>
+              </div>
             </div>
             <table className="w-full text-left">
-              <thead><tr className="border-b text-[10px] font-black text-slate-400 uppercase tracking-widest"><th className="pb-4">নাম ও ফোন</th><th className="pb-4">অর্ডার সংখ্যা</th><th className="pb-4">মোট কেনাকাটা</th><th className="pb-4">শেষ লোকেশন</th></tr></thead>
+              <thead><tr className="border-b text-[10px] font-black text-slate-400 uppercase tracking-widest"><th className="pb-4">নাম ও ফোন</th><th className="pb-4">অর্ডার সংখ্যা</th><th className="pb-4">মোট কেনাকাটা</th><th className="pb-4">নিবন্ধনের সময়</th></tr></thead>
               <tbody className="divide-y">
                 {customers.length === 0 ? (
-                  <tr><td colSpan={4} className="py-20 text-center text-slate-400 font-bold">এখনো কোনো গ্রাহক ডাটা তৈরি হয়নি।</td></tr>
+                  <tr><td colSpan={4} className="py-20 text-center text-slate-400 font-bold">কোনো গ্রাহক ডাটা পাওয়া যায়নি। অর্ডার আসলে এখানে দেখা যাবে।</td></tr>
                 ) : customers.map(c => (
                   <tr key={c.customer_phone} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4"><div className="font-black text-sm text-slate-900">{c.customer_name || 'নতুন গ্রাহক'}</div><div className="text-[10px] text-slate-400 font-bold">{c.customer_phone}</div></td>
-                    <td className="py-4 font-black text-slate-700">{c.total_orders} টি</td>
-                    <td className="py-4 font-black text-green-700">৳{c.total_spent}</td>
-                    <td className="py-4"><span className="px-2 py-0.5 bg-slate-100 rounded text-[9px] font-black text-slate-600">{c.last_location}</span></td>
+                    <td className="py-4"><div className="font-black text-sm text-slate-900">{c.customer_name || 'নাম নেই'}</div><div className="text-[10px] text-slate-400 font-bold">{c.customer_phone}</div></td>
+                    <td className="py-4 font-black text-slate-700">{c.total_orders || 0} টি</td>
+                    <td className="py-4 font-black text-green-700">৳{c.total_spent || 0}</td>
+                    <td className="py-4"><span className="px-2 py-0.5 bg-slate-100 rounded text-[9px] font-black text-slate-600">{c.created_at ? new Date(c.created_at).toLocaleDateString('bn-BD') : '-'}</span></td>
                   </tr>
                 ))}
               </tbody>

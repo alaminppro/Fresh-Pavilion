@@ -123,7 +123,7 @@ const App: React.FC = () => {
       const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
       const now = new Date().toISOString();
 
-      // 1. Insert Order first
+      // 1. Insert Order
       const { error: orderError } = await supabase.from('orders').insert([{
         id: orderId,
         customer_name: orderData.customerName,
@@ -137,7 +137,7 @@ const App: React.FC = () => {
 
       if (orderError) throw orderError;
 
-      // 2. Synchronize Customer Information using CORRECT COLUMN NAMES
+      // 2. Update Customer Table (Using columns from your screenshot)
       const { data: existingCust } = await supabase
         .from('customers')
         .select('*')
@@ -147,27 +147,66 @@ const App: React.FC = () => {
       const customerPayload = {
         customer_phone: orderData.customerPhone,
         customer_name: orderData.customerName,
-        last_location: orderData.location,
         total_orders: (existingCust?.total_orders || 0) + 1,
-        total_spent: (existingCust?.total_spent || 0) + orderData.totalPrice,
-        updated_at: now
+        total_spent: Number(existingCust?.total_spent || 0) + Number(orderData.totalPrice)
       };
 
       const { error: upsertError } = await supabase
         .from('customers')
         .upsert([customerPayload], { onConflict: 'customer_phone' });
 
-      if (upsertError) {
-        console.error("Customer upsert failed:", upsertError);
-      }
+      if (upsertError) console.error("Customer record update failed:", upsertError);
       
       setCart([]);
       await fetchInitialData(); 
       return true;
     } catch (err: any) {
-      console.error("Critical order processing failure:", err);
+      console.error("Order processing error:", err);
       alert("অর্ডার সম্পন্ন করা যায়নি: " + (err.message || "সার্ভার সংযোগ সমস্যা"));
       return false;
+    }
+  };
+
+  const syncCustomersFromOrders = async () => {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      // 1. Fetch all orders
+      const { data: allOrders, error: orderErr } = await supabase.from('orders').select('*');
+      if (orderErr) throw orderErr;
+      if (!allOrders || allOrders.length === 0) {
+        alert('সিঙ্ক করার জন্য কোনো অর্ডার পাওয়া যায়নি।');
+        return;
+      }
+
+      // 2. Recalculate customer totals
+      const customerMap = new Map();
+      allOrders.forEach(order => {
+        const phone = order.customer_phone;
+        const current = customerMap.get(phone) || { 
+          customer_phone: phone, 
+          customer_name: order.customer_name, 
+          total_orders: 0, 
+          total_spent: 0 
+        };
+        
+        current.total_orders += 1;
+        current.total_spent += Number(order.total_price);
+        customerMap.set(phone, current);
+      });
+
+      // 3. Upsert to Supabase
+      const customerPayloads = Array.from(customerMap.values());
+      const { error: upsertErr } = await supabase
+        .from('customers')
+        .upsert(customerPayloads, { onConflict: 'customer_phone' });
+      
+      if (upsertErr) throw upsertErr;
+      
+      await fetchInitialData();
+      alert('সফলভাবে গ্রাহক ডাটা সিঙ্ক হয়েছে!');
+    } catch (err: any) {
+      console.error(err);
+      alert('সিঙ্ক করতে সমস্যা হয়েছে: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -192,7 +231,7 @@ const App: React.FC = () => {
       try {
         await supabase.from('site_settings').upsert([{ key, value }], { onConflict: 'key' });
       } catch (err) {
-        console.error("Failed to update setting in database:", err);
+        console.error("Failed to update setting:", err);
       }
     }
   };
@@ -243,6 +282,7 @@ const App: React.FC = () => {
             onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); setStaff(staff.filter(s => s.id !== id)); }}
             onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); setOrders(orders.map(o => o.id === id ? { ...o, status } : o)); }}
             onSeedDatabase={fetchInitialData}
+            onSyncCustomers={syncCustomersFromOrders}
             onBackToSite={() => setCurrentPage('home')} 
             settings={{ ...settings, lastSync }} onUpdateSetting={handleUpdateSetting}
           />

@@ -217,6 +217,7 @@ const App: React.FC = () => {
     }
   };
 
+  // Define isAdminMode to be used in narrowing blocks
   const isAdminMode = currentPage === 'admin';
 
   if (isLoading) return <div className="min-h-screen flex flex-col items-center justify-center font-black text-green-600 bg-white"><div className="w-16 h-16 border-4 border-green-600 border-t-transparent rounded-full animate-spin mb-4"></div>লোডিং হচ্ছে...</div>;
@@ -235,7 +236,8 @@ const App: React.FC = () => {
           siteName={settings.site_name}
         />
       )}
-      <main className={`flex-grow ${isAdminMode ? '' : 'pt-20'} mx-auto w-full`}>
+      
+      <main className={`flex-grow ${isAdminMode ? '' : 'pt-16 md:pt-20'} mx-auto w-full pb-16 md:pb-0`}>
         {currentPage === 'home' && (
           <Home 
             products={products} wishlist={wishlist} onShopNow={() => setCurrentPage('shop')} onAddToCart={addToCart} 
@@ -245,7 +247,7 @@ const App: React.FC = () => {
           />
         )}
         {currentPage === 'shop' && (
-          <div className="px-6 md:px-12 max-w-[1600px] mx-auto">
+          <div className="px-0 md:px-12 max-w-[1600px] mx-auto">
             <Shop 
               products={products} wishlist={wishlist} onAddToCart={addToCart} 
               onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
@@ -271,7 +273,7 @@ const App: React.FC = () => {
           />
         )}
         {currentPage === 'product-detail' && products.find(p => p.id === selectedProductId) && (
-          <div className="px-6 md:px-12 max-w-[1600px] mx-auto">
+          <div className="px-0 md:px-12 max-w-[1600px] mx-auto">
             <ProductDetail 
               product={products.find(p => p.id === selectedProductId)!} allProducts={products} 
               onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
@@ -283,7 +285,41 @@ const App: React.FC = () => {
           </div>
         )}
       </main>
-      {!isAdminMode && <Footer siteName={settings.site_name} supportPhone={settings.support_phone} logo={settings.logo} />}
+
+      {!isAdminMode && (
+        <>
+          <Footer siteName={settings.site_name} supportPhone={settings.support_phone} logo={settings.logo} />
+          {/* Mobile Bottom Navigation Bar */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-slate-100 z-[140] h-16 px-6 flex items-center justify-between pb-safe">
+            <BottomNavItem 
+              active={currentPage === 'home'} 
+              onClick={() => setCurrentPage('home')} 
+              icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>} 
+              label="হোম"
+            />
+            <BottomNavItem 
+              active={currentPage === 'shop'} 
+              onClick={() => setCurrentPage('shop')} 
+              icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>} 
+              label="শপ"
+            />
+            <BottomNavItem 
+              active={isWishlistOpen} 
+              onClick={() => setIsWishlistOpen(true)} 
+              icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>} 
+              label="উইশ"
+            />
+            <BottomNavItem 
+              /* Fix: Use pre-calculated isAdminMode to avoid type narrowing issues in narrowed scope where currentPage is known not to be 'admin' */
+              active={isAdminMode} 
+              onClick={() => setCurrentPage('admin')} 
+              icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>} 
+              label="অ্যাডমিন"
+            />
+          </div>
+        </>
+      )}
+
       <CartSidebar 
         isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} 
         onRemove={(id) => setCart(cart.filter(i => i.id !== id))} 
@@ -295,5 +331,19 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+const BottomNavItem = ({ active, onClick, icon, label }: any) => (
+  <button 
+    onClick={onClick} 
+    className={`flex flex-col items-center justify-center gap-1 transition-all ${
+      active ? 'text-green-600 scale-110' : 'text-slate-400'
+    }`}
+  >
+    <div className={`transition-all duration-300 ${active ? 'drop-shadow-[0_0_8px_rgba(22,163,74,0.4)]' : ''}`}>
+      {icon}
+    </div>
+    <span className="text-[10px] font-black uppercase tracking-tighter">{label}</span>
+  </button>
+);
 
 export default App;

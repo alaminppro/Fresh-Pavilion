@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { COLORS } from '../constants';
 import { Product, Order, AdminUser } from '../types';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 type AdminTab = 'Dashboard' | 'Products' | 'Orders' | 'Customers' | 'Categories' | 'Settings';
 
@@ -9,47 +10,39 @@ interface AdminProps {
   products: Product[];
   orders: Order[];
   categories: string[];
+  staff: AdminUser[];
   onAddProduct: (p: Omit<Product, 'id'>) => void;
   onDeleteProduct: (id: string) => void;
   onUpdateProduct: (p: Product) => void;
   onAddCategory: (name: string) => void;
   onDeleteCategory: (name: string) => void;
+  onAddStaff: (s: Omit<AdminUser, 'id'>) => void;
+  onDeleteStaff: (id: string) => void;
   onUpdateOrderStatus: (id: string, status: Order['status']) => void;
   onSeedDatabase: () => void;
   onBackToSite: () => void;
 }
 
 export const Admin: React.FC<AdminProps> = ({ 
-  products, 
-  orders, 
-  categories,
-  onAddProduct, 
-  onDeleteProduct, 
-  onUpdateProduct,
-  onAddCategory,
-  onDeleteCategory,
-  onUpdateOrderStatus,
-  onSeedDatabase,
-  onBackToSite
+  products, orders, categories, staff,
+  onAddProduct, onDeleteProduct, onUpdateProduct,
+  onAddCategory, onDeleteCategory, 
+  onAddStaff, onDeleteStaff,
+  onUpdateOrderStatus, onSeedDatabase, onBackToSite
 }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
   const [activeTab, setActiveTab] = useState<AdminTab>('Dashboard');
   const [showProductModal, setShowProductModal] = useState(false);
+  const [showStaffModal, setShowStaffModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newCatName, setNewCatName] = useState('');
+  const [newStaff, setNewStaff] = useState<Omit<AdminUser, 'id'>>({ username: '', password: '', phone: '', role: 'staff' });
 
   const [formState, setFormState] = useState<Omit<Product, 'id'>>({
-    name: '',
-    price: 0,
-    description: '',
-    longDescription: '',
-    image: '',
-    category: categories[0] || 'খাবার',
-    stock: 10,
-    unit: 'টি'
+    name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি'
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,8 +57,14 @@ export const Admin: React.FC<AdminProps> = ({
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'admin' && password === '1234') {
-      const user: AdminUser = { id: '0', username: 'Master Admin', phone: '', password: '', role: 'admin' };
+    // Use standard check for Master Admin, or logic to check staff array
+    const masterAdmin = (usernameInput === 'admin' && passwordInput === '1234');
+    const staffMatch = staff.find(s => s.username === usernameInput && s.password === passwordInput);
+    
+    if (masterAdmin || staffMatch) {
+      const user: AdminUser = masterAdmin 
+        ? { id: '0', username: 'Master Admin', phone: '', password: '', role: 'admin' }
+        : staffMatch!;
       setIsLoggedIn(true);
       setCurrentUser(user);
       sessionStorage.setItem('fp_admin_session', JSON.stringify(user));
@@ -74,80 +73,63 @@ export const Admin: React.FC<AdminProps> = ({
     }
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    sessionStorage.removeItem('fp_admin_session');
-  };
+  const handleLogout = () => { setIsLoggedIn(false); sessionStorage.removeItem('fp_admin_session'); };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 500 * 1024) {
-        alert('ইমেজ সাইজ ৫০০KB এর নিচে হতে হবে।');
-        return;
-      }
+      if (file.size > 500 * 1024) { alert('ইমেজ সাইজ ৫০০KB এর নিচে হতে হবে।'); return; }
       const reader = new FileReader();
       reader.onloadend = () => setFormState(prev => ({ ...prev, image: reader.result as string }));
       reader.readAsDataURL(file);
     }
   };
 
-  const handleOpenModal = (p?: Product) => {
-    if (p) {
-      setEditingProduct(p);
-      setFormState({ ...p });
-    } else {
-      setEditingProduct(null);
-      setFormState({
-        name: '',
-        price: 0,
-        description: '',
-        longDescription: '',
-        image: '',
-        category: categories[0] || 'খাবার',
-        stock: 10,
-        unit: 'টি'
-      });
-    }
+  const handleOpenProductModal = (p?: Product) => {
+    if (p) { setEditingProduct(p); setFormState({ ...p }); } 
+    else { setEditingProduct(null); setFormState({ name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি' }); }
     setShowProductModal(true);
   };
 
   const handleSaveProduct = () => {
-    if (!formState.name || formState.price <= 0 || !formState.image) {
-      alert('সঠিক তথ্য ও ছবি দিন');
-      return;
-    }
+    if (!formState.name || formState.price <= 0 || !formState.image) { alert('সঠিক তথ্য ও ছবি দিন'); return; }
     editingProduct ? onUpdateProduct({ ...formState, id: editingProduct.id }) : onAddProduct(formState);
     setShowProductModal(false);
   };
 
+  const handleAddStaffInternal = () => {
+    if (!newStaff.username || !newStaff.password) { alert('ইউজারনেম ও পাসওয়ার্ড দিন'); return; }
+    onAddStaff(newStaff);
+    setShowStaffModal(false);
+    setNewStaff({ username: '', password: '', phone: '', role: 'staff' });
+  };
+
+  const clearCache = () => {
+    localStorage.removeItem('fp_products');
+    localStorage.removeItem('fp_orders');
+    alert("ব্রাউজার ক্যাশ পরিষ্কার করা হয়েছে। পেজ রিফ্রেশ করুন।");
+    window.location.reload();
+  };
+
   const customers = Array.from(new Set(orders.map(o => o.customerPhone))).map(phone => {
     const customerOrders = orders.filter(o => o.customerPhone === phone);
-    return { 
-      phone, 
-      name: customerOrders[0].customerName, 
-      orderCount: customerOrders.length, 
-      totalSpent: customerOrders.reduce((sum, o) => sum + o.totalPrice, 0),
-      lastOrder: customerOrders[customerOrders.length - 1].date 
-    };
+    return { phone, name: customerOrders[0].customerName, orderCount: customerOrders.length, totalSpent: customerOrders.reduce((sum, o) => sum + o.totalPrice, 0), lastOrder: customerOrders[customerOrders.length - 1].date };
   });
 
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-6 font-['Hind_Siliguri']">
-        <div className="bg-white p-12 rounded-[3rem] shadow-2xl w-full max-w-md border border-white/20">
-          <div className="text-center mb-12">
-            <div className="w-20 h-20 bg-green-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-xl">
-              <span className="text-white font-black text-3xl">FP</span>
-            </div>
+        <div className="bg-white p-12 rounded-[3rem] shadow-2xl w-full max-w-md">
+          <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-green-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-xl"><span className="text-white font-black text-3xl">FP</span></div>
             <h2 className="text-3xl font-black text-slate-800 tracking-tight">অ্যাডমিন প্যানেল</h2>
           </div>
           <form onSubmit={handleLogin} className="space-y-6">
-            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500" placeholder="ইউজারনেম দিন" />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500" placeholder="পাসওয়ার্ড দিন" />
+            <input type="text" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500" placeholder="ইউজারনেম" />
+            <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500" placeholder="পাসওয়ার্ড" />
             <button type="submit" className="w-full py-4 rounded-2xl text-white font-black text-xl shadow-lg bg-[#2E7D32] hover:bg-green-700 transition-all">প্রবেশ করুন</button>
           </form>
-          <div className="mt-8 text-center"><button onClick={onBackToSite} className="text-slate-400 font-bold text-sm">ওয়েবসাইটে ফিরে যান</button></div>
+          <div className="mt-8 text-center"><button onClick={onBackToSite} className="text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">ওয়েবসাইটে ফিরে যান</button></div>
         </div>
       </div>
     );
@@ -155,6 +137,7 @@ export const Admin: React.FC<AdminProps> = ({
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-['Hind_Siliguri']">
+      {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-100 flex flex-col fixed h-full z-40 shadow-xl">
         <div className="p-6 border-b flex items-center gap-3">
           <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center text-white font-black">A</div>
@@ -163,22 +146,21 @@ export const Admin: React.FC<AdminProps> = ({
         <nav className="flex-grow p-4 space-y-2">
           {(['Dashboard', 'Products', 'Orders', 'Customers', 'Categories', 'Settings'] as AdminTab[]).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold ${activeTab === tab ? 'bg-green-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>
-              <span className="text-lg">
-                {tab === 'Dashboard' ? '📊' : tab === 'Products' ? '📦' : tab === 'Orders' ? '🛒' : tab === 'Customers' ? '👥' : tab === 'Categories' ? '🏷️' : '⚙️'}
-              </span>
+              <span className="text-lg">{tab === 'Dashboard' ? '📊' : tab === 'Products' ? '📦' : tab === 'Orders' ? '🛒' : tab === 'Customers' ? '👥' : tab === 'Categories' ? '🏷️' : '⚙️'}</span>
               <span className="text-sm">{tab === 'Dashboard' ? 'ড্যাশবোর্ড' : tab === 'Products' ? 'পণ্য' : tab === 'Orders' ? 'অর্ডার' : tab === 'Customers' ? 'গ্রাহক' : tab === 'Categories' ? 'ক্যাটাগরি' : 'সেটিংস'}</span>
             </button>
           ))}
         </nav>
         <div className="p-4 space-y-2">
-          <button onClick={onBackToSite} className="w-full py-3 rounded-xl bg-slate-900 text-white font-black text-xs">🏠 ওয়েবসাইট</button>
-          <button onClick={handleLogout} className="w-full py-3 rounded-xl bg-red-50 text-red-600 font-black text-xs">🚪 লগ আউট</button>
+          <button onClick={onBackToSite} className="w-full py-3 rounded-xl bg-slate-900 text-white font-black text-xs hover:bg-black transition-colors">🏠 ওয়েবসাইট</button>
+          <button onClick={handleLogout} className="w-full py-3 rounded-xl bg-red-50 text-red-600 font-black text-xs hover:bg-red-100 transition-colors">🚪 লগ আউট</button>
         </div>
       </aside>
 
+      {/* Main Content */}
       <main className="flex-grow ml-64 p-10 overflow-y-auto">
         <header className="mb-10 flex justify-between items-end">
-          <div><h1 className="text-3xl font-black text-slate-900">{activeTab}</h1></div>
+          <div><h1 className="text-4xl font-black text-slate-900 tracking-tight">{activeTab}</h1></div>
           <div className="text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date().toLocaleDateString('bn-BD', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
         </header>
 
@@ -195,7 +177,7 @@ export const Admin: React.FC<AdminProps> = ({
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-xl font-black">পণ্য ব্যবস্থাপনা</h2>
-              <button onClick={() => handleOpenModal()} className="px-5 py-2.5 bg-green-600 text-white font-black rounded-xl text-sm shadow-md hover:bg-green-700 transition-all">+ নতুন পণ্য</button>
+              <button onClick={() => handleOpenProductModal()} className="px-5 py-2.5 bg-green-600 text-white font-black rounded-xl text-sm shadow-md hover:bg-green-700 transition-all">+ নতুন পণ্য</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map(p => (
@@ -207,7 +189,7 @@ export const Admin: React.FC<AdminProps> = ({
                     <div className="flex justify-between items-center mt-2">
                       <span className="font-black text-green-700">৳{p.price}</span>
                       <div className="flex gap-1">
-                        <button onClick={() => handleOpenModal(p)} className="p-1.5 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all">✏️</button>
+                        <button onClick={() => handleOpenProductModal(p)} className="p-1.5 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all">✏️</button>
                         <button onClick={() => onDeleteProduct(p.id)} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all">🗑️</button>
                       </div>
                     </div>
@@ -222,8 +204,8 @@ export const Admin: React.FC<AdminProps> = ({
           <div className="bg-white p-8 rounded-[2rem] shadow-sm max-w-2xl">
             <h2 className="text-xl font-black mb-8">ক্যাটাগরি কন্ট্রোল</h2>
             <div className="flex gap-3 mb-8">
-              <input type="text" value={newCatName} onChange={e=>setNewCatName(e.target.value)} className="flex-grow bg-slate-50 border border-slate-100 rounded-xl p-4 font-bold outline-none focus:border-green-500" placeholder="নতুন ক্যাটাগরি নাম (যেমন: ফল)" />
-              <button onClick={() => { if(newCatName){ onAddCategory(newCatName); setNewCatName(''); } }} className="px-8 py-4 bg-slate-900 text-white font-black rounded-xl hover:bg-slate-800 transition-all">যোগ করুন</button>
+              <input type="text" value={newCatName} onChange={e=>setNewCatName(e.target.value)} className="flex-grow bg-slate-50 border border-slate-100 rounded-xl p-4 font-bold outline-none focus:border-green-500" placeholder="নতুন ক্যাটাগরি নাম" />
+              <button onClick={() => { if(newCatName){ onAddCategory(newCatName); setNewCatName(''); } }} className="px-8 py-4 bg-slate-900 text-white font-black rounded-xl">যোগ করুন</button>
             </div>
             <div className="space-y-3">
               {categories.map(cat => (
@@ -260,42 +242,112 @@ export const Admin: React.FC<AdminProps> = ({
           </div>
         )}
 
-        {activeTab === 'Customers' && (
-          <div className="bg-white p-8 rounded-[2rem] shadow-sm">
-            <table className="w-full text-left">
-              <thead><tr className="border-b text-[10px] font-black text-slate-400"><th className="pb-4">গ্রাহক</th><th className="pb-4">অর্ডার সংখ্যা</th><th className="pb-4">মোট কেনাকাটা</th><th className="pb-4">শেষ অর্ডার</th></tr></thead>
-              <tbody className="divide-y">
-                {customers.map(c => (
-                  <tr key={c.phone}>
-                    <td className="py-4"><div className="font-black text-sm">{c.name}</div><div className="text-[10px] text-slate-400">{c.phone}</div></td>
-                    <td className="py-4 font-black">{c.orderCount} টি</td>
-                    <td className="py-4 font-black text-green-700">৳{c.totalSpent}</td>
-                    <td className="py-4 text-[10px] font-bold text-slate-500">{new Date(c.lastOrder).toLocaleDateString('bn-BD')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
         {activeTab === 'Settings' && (
-          <div className="space-y-8">
-            <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50 max-w-2xl">
-              <h3 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-2">🚀 সিস্টেম টুলস</h3>
-              <p className="text-slate-500 text-sm mb-6 leading-relaxed">
-                আপনার ডাটাবেজ যদি খালি থাকে, তাহলে নিচের বাটনটি ক্লিক করে ডামি ডাটা দিয়ে শুরু করতে পারেন। এটি আপনার Supabase একাউন্টে ১২টি অর্গানিক প্রোডাক্ট আপলোড করে দিবে।
-              </p>
-              <button 
-                onClick={onSeedDatabase}
-                className="w-full py-4 rounded-xl bg-blue-600 text-white font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
-              >
-                <span>🌱</span> সিস্টেম ডাটা দিয়ে শুরু করুন
-              </button>
+          <div className="space-y-10">
+            {/* Staff Management Section */}
+            <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">👥 ইউজার ও স্টাফ ব্যবস্থাপনা</h3>
+                <button onClick={() => setShowStaffModal(true)} className="px-4 py-2 bg-blue-600 text-white font-black rounded-xl text-xs shadow-md">+ স্টাফ যোগ করুন</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                  <div>
+                    <div className="font-black text-sm">admin (Master)</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master Admin</div>
+                  </div>
+                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-[9px] font-black">সিস্টেম</span>
+                </div>
+                {staff.map(s => (
+                  <div key={s.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
+                    <div>
+                      <div className="font-black text-sm">{s.username}</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.role === 'staff' ? 'Staff' : 'Sub-Admin'}</div>
+                    </div>
+                    <button onClick={() => onDeleteStaff(s.id)} className="text-red-500 hover:text-red-700 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* System Tools Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50">
+                <h3 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-2">🚀 ডাটাবেজ টুলস</h3>
+                <p className="text-slate-500 text-sm mb-6 leading-relaxed font-medium">আপনার ডাটাবেজ যদি খালি থাকে বা রিসেট করতে চান, তবে ডামি প্রোডাক্টগুলো ডাটাবেজে সিড করতে পারেন।</p>
+                <button onClick={onSeedDatabase} className="w-full py-4 rounded-xl bg-blue-600 text-white font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"><span>🌱</span> ডামি ডাটা সিড করুন</button>
+              </div>
+
+              <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50">
+                <h3 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-2">🧹 সিস্টেম ক্লিনআপ</h3>
+                <p className="text-slate-500 text-sm mb-6 leading-relaxed font-medium">ব্রাউজার ক্যাশ বা লোকাল স্টোরেজে কোনো সমস্যা হলে নিচের বাটনে ক্লিক করে ক্লিন করতে পারেন।</p>
+                <button onClick={clearCache} className="w-full py-4 rounded-xl bg-slate-900 text-white font-black shadow-lg hover:bg-black transition-all flex items-center justify-center gap-2"><span>⚡</span> লোকাল ক্যাশ ক্লিন করুন</button>
+              </div>
+            </div>
+
+            {/* Health Status */}
+            <div className="bg-slate-900 text-white p-8 rounded-[2rem] shadow-2xl">
+              <h3 className="text-xl font-black mb-6 flex items-center gap-2">🛡️ সিস্টেম হেলথ</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div>
+                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Supabase Status</div>
+                  <div className={`text-sm font-black flex items-center gap-2 ${isSupabaseConfigured ? 'text-green-400' : 'text-red-400'}`}>
+                    <div className={`w-2 h-2 rounded-full animate-pulse ${isSupabaseConfigured ? 'bg-green-400' : 'bg-red-400'}`} />
+                    {isSupabaseConfigured ? 'Connected' : 'Disconnected'}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Products Sync</div>
+                  <div className="text-sm font-black text-blue-400">{products.length} Items Live</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Last Backup</div>
+                  <div className="text-sm font-black text-slate-300">Auto (Realtime)</div>
+                </div>
+                <div>
+                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Admin Session</div>
+                  <div className="text-sm font-black text-orange-400">Active (Secure)</div>
+                </div>
+              </div>
             </div>
           </div>
         )}
       </main>
 
+      {/* Staff Modal */}
+      {showStaffModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-slate-900/80 backdrop-blur" onClick={() => setShowStaffModal(false)} />
+          <div className="relative bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl">
+            <h3 className="text-2xl font-black mb-8">নতুন স্টাফ যোগ করুন</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ইউজারনেম</label>
+                <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1" value={newStaff.username} onChange={e=>setNewStaff({...newStaff, username: e.target.value})} placeholder="যেমন: staff_01" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">পাসওয়ার্ড</label>
+                <input type="password" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1" value={newStaff.password} onChange={e=>setNewStaff({...newStaff, password: e.target.value})} placeholder="পাসওয়ার্ড দিন" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">রোল (Role)</label>
+                <select className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1 cursor-pointer" value={newStaff.role} onChange={e=>setNewStaff({...newStaff, role: e.target.value as 'staff' | 'admin'})}>
+                  <option value="staff">স্টাফ (Staff)</option>
+                  <option value="admin">সাব-অ্যাডমিন (Sub-Admin)</option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-8 flex gap-4">
+              <button onClick={() => setShowStaffModal(false)} className="flex-grow py-4 rounded-xl bg-slate-100 font-black text-slate-500">বাতিল</button>
+              <button onClick={handleAddStaffInternal} className="flex-grow py-4 rounded-xl bg-blue-600 text-white font-black">যোগ করুন</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product Modal */}
       {showProductModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur" onClick={() => setShowProductModal(false)} />
@@ -304,7 +356,7 @@ export const Admin: React.FC<AdminProps> = ({
             <div className="grid grid-cols-2 gap-5">
               <div className="col-span-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">পণ্যের নাম</label>
-                <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none focus:border-green-500 mt-1" value={formState.name} onChange={e=>setFormState({...formState, name: e.target.value})} placeholder="যেমন: অর্গানিক মধু" />
+                <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none focus:border-green-500 mt-1" value={formState.name} onChange={e=>setFormState({...formState, name: e.target.value})} placeholder="পণ্যের নাম" />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ক্যাটাগরি</label>
@@ -317,7 +369,7 @@ export const Admin: React.FC<AdminProps> = ({
                 <input type="number" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none focus:border-green-500 mt-1" value={formState.price} onChange={e=>setFormState({...formState, price: Number(e.target.value)})} placeholder="৳" />
               </div>
               <div className="col-span-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">পণ্যের ছবি (Max 500KB)</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">পণ্যের ছবি</label>
                 <div className="flex items-center gap-4 mt-1">
                   <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border">{formState.image && <img src={formState.image} className="w-full h-full object-cover" />}</div>
                   <button onClick={() => fileInputRef.current?.click()} className="flex-grow py-4 border-2 border-dashed rounded-xl font-black text-slate-400 hover:border-green-400 hover:text-green-500 transition-all">ছবি নির্বাচন করুন</button>

@@ -7,7 +7,7 @@ import { Admin } from './pages/Admin';
 import { ProductDetail } from './pages/ProductDetail';
 import { CartSidebar } from './components/CartSidebar';
 import { WishlistSidebar } from './components/WishlistSidebar';
-import { Product, CartItem, Order } from './types';
+import { Product, CartItem, Order, AdminUser } from './types';
 import { Footer } from './components/Footer';
 import { INITIAL_PRODUCTS } from './constants';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
@@ -19,6 +19,7 @@ const App: React.FC = () => {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>(['খাবার', 'পানীয়', 'স্বাস্থ্য', 'অন্যান্য']);
+  const [staff, setStaff] = useState<AdminUser[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<Product[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -48,10 +49,11 @@ const App: React.FC = () => {
       const { data: dbProducts } = await supabase.from('products').select('*').order('created_at', { ascending: false });
       const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
       const { data: dbCategories } = await supabase.from('categories').select('name');
+      const { data: dbStaff } = await supabase.from('admin_users').select('*');
       
-      // If DB is empty, show initial products in UI but they aren't "in" DB yet
       setProducts(dbProducts && dbProducts.length > 0 ? (dbProducts as Product[]) : (INITIAL_PRODUCTS as Product[]));
       if (dbOrders) setOrders(dbOrders as Order[]);
+      if (dbStaff) setStaff(dbStaff as AdminUser[]);
       if (dbCategories && dbCategories.length > 0) {
         setCategories(dbCategories.map(c => c.name));
       }
@@ -63,39 +65,55 @@ const App: React.FC = () => {
     }
   };
 
-  // --- DATABASE SEEDING ---
   const handleSeedDatabase = async () => {
     if (!isSupabaseConfigured || !supabase) {
       alert("Supabase is not configured!");
       return;
     }
-
-    const confirm = window.confirm("আপনি কি সব ডামি প্রোডাক্ট ডাটাবেজে আপলোড করতে চান?");
+    const confirm = window.confirm("আপনি কি সব ডামি প্রোডাক্ট ডাটাবেজে আপলোড করতে চান? এটি ক্যাটাগরিগুলোও তৈরি করবে।");
     if (!confirm) return;
 
     try {
-      // Create categories first
       const uniqueCats = Array.from(new Set(INITIAL_PRODUCTS.map(p => p.category)));
       for (const cat of uniqueCats) {
-        await supabase.from('categories').insert([{ name: cat }]).select();
+        await supabase.from('categories').upsert([{ name: cat }], { onConflict: 'name' });
       }
-
-      // Format products for insertion (removing manual IDs to let Supabase handle them if needed, 
-      // or keep them if your schema allows)
       const productsToSeed = INITIAL_PRODUCTS.map(({ id, ...rest }) => rest);
-      
       const { error } = await supabase.from('products').insert(productsToSeed);
-      
       if (error) throw error;
-      
-      alert("সাফল্য! ডাটাবেজ সিড করা হয়েছে।");
+      alert("সাফল্য! ডামি প্রোডাক্ট এবং ক্যাটাগরি সফলভাবে ডাটাবেজে যুক্ত হয়েছে।");
       fetchInitialData();
     } catch (err: any) {
       alert("Error seeding data: " + err.message);
     }
   };
 
-  // --- ADMIN HANDLERS ---
+  const handleAddStaff = async (staffData: Omit<AdminUser, 'id'>) => {
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.from('admin_users').insert([staffData]).select();
+      if (error) {
+        alert("Error adding staff: " + error.message);
+        return;
+      }
+      if (data) setStaff([...staff, data[0] as AdminUser]);
+    } else {
+      setStaff([...staff, { ...staffData, id: Date.now().toString() }]);
+    }
+  };
+
+  const handleDeleteStaff = async (id: string) => {
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('admin_users').delete().eq('id', id);
+      if (error) {
+        alert("Error deleting staff: " + error.message);
+        return;
+      }
+      setStaff(staff.filter(s => s.id !== id));
+    } else {
+      setStaff(staff.filter(s => s.id !== id));
+    }
+  };
+
   const handleAddProduct = async (productData: Omit<Product, 'id'>) => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('products').insert([productData]).select();
@@ -175,13 +193,10 @@ const App: React.FC = () => {
     }
   };
 
-  // --- SHOP HANDLERS ---
   const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
-      if (existing) {
-        return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-      }
+      if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
       return [...prev, { ...product, quantity: 1 }];
     });
     setIsCartOpen(true);
@@ -204,13 +219,9 @@ const App: React.FC = () => {
       status: 'Pending',
       date: new Date().toISOString()
     };
-
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('orders').insert([newOrder]);
-      if (error) {
-        alert("Order placement failed: " + error.message);
-        return;
-      }
+      if (error) { alert("Order placement failed: " + error.message); return; }
       setOrders(prev => [newOrder as Order, ...prev]);
       setCart([]);
     } else {
@@ -233,14 +244,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-[#FDFDFD]">
       {!isAdminMode && (
-        <Navbar 
-          onNavigate={(p) => { setCurrentPage(p as Page); setSelectedProductId(null); }} 
-          currentPage={currentPage} 
-          cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)} 
-          wishlistCount={wishlist.length} 
-          onOpenCart={() => setIsCartOpen(true)} 
-          onOpenWishlist={() => setIsWishlistOpen(true)} 
-        />
+        <Navbar onNavigate={(p) => { setCurrentPage(p as Page); setSelectedProductId(null); }} currentPage={currentPage} cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)} wishlistCount={wishlist.length} onOpenCart={() => setIsCartOpen(true)} onOpenWishlist={() => setIsWishlistOpen(true)} />
       )}
       <main className={`flex-grow ${isAdminMode ? '' : 'pt-20'}`}>
         {currentPage === 'home' && (
@@ -250,30 +254,10 @@ const App: React.FC = () => {
           <Shop products={products} wishlist={wishlist} onAddToCart={addToCart} onToggleWishlist={toggleWishlist} onProductClick={openProductDetail} />
         )}
         {currentPage === 'admin' && (
-          <Admin 
-            products={products} 
-            orders={orders} 
-            categories={categories}
-            onAddProduct={handleAddProduct} 
-            onDeleteProduct={handleDeleteProduct} 
-            onUpdateProduct={handleUpdateProduct} 
-            onAddCategory={handleAddCategory}
-            onDeleteCategory={handleDeleteCategory}
-            onUpdateOrderStatus={handleUpdateOrderStatus} 
-            onSeedDatabase={handleSeedDatabase}
-            onBackToSite={() => setCurrentPage('home')} 
-          />
+          <Admin products={products} orders={orders} categories={categories} staff={staff} onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onUpdateProduct={handleUpdateProduct} onAddCategory={handleAddCategory} onDeleteCategory={handleDeleteCategory} onAddStaff={handleAddStaff} onDeleteStaff={handleDeleteStaff} onUpdateOrderStatus={handleUpdateOrderStatus} onSeedDatabase={handleSeedDatabase} onBackToSite={() => setCurrentPage('home')} />
         )}
         {currentPage === 'product-detail' && products.find(p => p.id === selectedProductId) && (
-          <ProductDetail 
-            product={products.find(p => p.id === selectedProductId)!} 
-            allProducts={products} 
-            onAddToCart={addToCart} 
-            onToggleWishlist={toggleWishlist} 
-            isWishlisted={wishlist.some(p => p.id === selectedProductId)} 
-            onProductClick={openProductDetail} 
-            wishlist={wishlist} 
-          />
+          <ProductDetail product={products.find(p => p.id === selectedProductId)!} allProducts={products} onAddToCart={addToCart} onToggleWishlist={toggleWishlist} isWishlisted={wishlist.some(p => p.id === selectedProductId)} onProductClick={openProductDetail} wishlist={wishlist} />
         )}
       </main>
       {!isAdminMode && <Footer />}

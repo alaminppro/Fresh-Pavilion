@@ -49,6 +49,7 @@ const App: React.FC = () => {
       const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
       const { data: dbCategories } = await supabase.from('categories').select('name');
       
+      // If DB is empty, show initial products in UI but they aren't "in" DB yet
       setProducts(dbProducts && dbProducts.length > 0 ? (dbProducts as Product[]) : (INITIAL_PRODUCTS as Product[]));
       if (dbOrders) setOrders(dbOrders as Order[]);
       if (dbCategories && dbCategories.length > 0) {
@@ -62,18 +63,39 @@ const App: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    localStorage.setItem('fp_cart', JSON.stringify(cart));
-    localStorage.setItem('fp_wishlist', JSON.stringify(wishlist));
-    
-    if (!isSupabaseConfigured) {
-      localStorage.setItem('fp_products', JSON.stringify(products));
-      localStorage.setItem('fp_orders', JSON.stringify(orders));
+  // --- DATABASE SEEDING ---
+  const handleSeedDatabase = async () => {
+    if (!isSupabaseConfigured || !supabase) {
+      alert("Supabase is not configured!");
+      return;
     }
-  }, [cart, wishlist, products, orders]);
+
+    const confirm = window.confirm("আপনি কি সব ডামি প্রোডাক্ট ডাটাবেজে আপলোড করতে চান?");
+    if (!confirm) return;
+
+    try {
+      // Create categories first
+      const uniqueCats = Array.from(new Set(INITIAL_PRODUCTS.map(p => p.category)));
+      for (const cat of uniqueCats) {
+        await supabase.from('categories').insert([{ name: cat }]).select();
+      }
+
+      // Format products for insertion (removing manual IDs to let Supabase handle them if needed, 
+      // or keep them if your schema allows)
+      const productsToSeed = INITIAL_PRODUCTS.map(({ id, ...rest }) => rest);
+      
+      const { error } = await supabase.from('products').insert(productsToSeed);
+      
+      if (error) throw error;
+      
+      alert("সাফল্য! ডাটাবেজ সিড করা হয়েছে।");
+      fetchInitialData();
+    } catch (err: any) {
+      alert("Error seeding data: " + err.message);
+    }
+  };
 
   // --- ADMIN HANDLERS ---
-
   const handleAddProduct = async (productData: Omit<Product, 'id'>) => {
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase.from('products').insert([productData]).select();
@@ -154,7 +176,6 @@ const App: React.FC = () => {
   };
 
   // --- SHOP HANDLERS ---
-
   const addToCart = (product: Product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
@@ -204,7 +225,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white font-['Hind_Siliguri']">
         <div className="w-16 h-16 border-4 border-green-100 border-t-green-600 rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-bold animate-pulse">ক্যাম্পাস শপ লোড হচ্ছে...</p>
+        <p className="text-slate-500 font-bold animate-pulse">লোড হচ্ছে...</p>
       </div>
     );
   }
@@ -239,6 +260,7 @@ const App: React.FC = () => {
             onAddCategory={handleAddCategory}
             onDeleteCategory={handleDeleteCategory}
             onUpdateOrderStatus={handleUpdateOrderStatus} 
+            onSeedDatabase={handleSeedDatabase}
             onBackToSite={() => setCurrentPage('home')} 
           />
         )}
@@ -255,7 +277,6 @@ const App: React.FC = () => {
         )}
       </main>
       {!isAdminMode && <Footer />}
-      
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onRemove={(id) => setCart(cart.filter(i => i.id !== id))} onUpdateQuantity={(id, d) => setCart(cart.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + d)} : i))} onCheckout={createOrder} />
       <WishlistSidebar isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} items={wishlist} onAddToCart={addToCart} onRemove={toggleWishlist} />
     </div>

@@ -101,8 +101,13 @@ const App: React.FC = () => {
   };
 
   const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'status'>): Promise<boolean> => {
+    // CRITICAL: Explicitly construct the object to prevent extra fields like 'date' being sent
     const newOrder = {
-      ...orderData,
+      customerName: orderData.customerName,
+      customerPhone: orderData.customerPhone,
+      location: orderData.location,
+      items: orderData.items,
+      totalPrice: orderData.totalPrice,
       id: `#FP-${Math.floor(Math.random() * 900000 + 100000)}`,
       status: 'Pending',
       created_at: new Date().toISOString()
@@ -111,20 +116,25 @@ const App: React.FC = () => {
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('orders').insert([newOrder]);
       if (error) {
+        console.error("Supabase Order Error:", error);
         alert("অর্ডার সম্পন্ন করা যায়নি: " + error.message);
         return false;
       }
       
       // Update customer stats
-      const { data: existingCust } = await supabase.from('customers').select('*').eq('phone', orderData.customerPhone).single();
-      const customerPayload = {
-        phone: orderData.customerPhone,
-        name: orderData.customerName,
-        last_location: orderData.location,
-        total_orders: (existingCust?.total_orders || 0) + 1,
-        total_spent: (existingCust?.total_spent || 0) + orderData.totalPrice
-      };
-      await supabase.from('customers').upsert([customerPayload]);
+      try {
+        const { data: existingCust } = await supabase.from('customers').select('*').eq('phone', orderData.customerPhone).single();
+        const customerPayload = {
+          phone: orderData.customerPhone,
+          name: orderData.customerName,
+          last_location: orderData.location,
+          total_orders: (existingCust?.total_orders || 0) + 1,
+          total_spent: (existingCust?.total_spent || 0) + orderData.totalPrice
+        };
+        await supabase.from('customers').upsert([customerPayload]);
+      } catch (custErr) {
+        console.warn("Failed to update customer stats", custErr);
+      }
       
       setOrders(prev => [newOrder as Order, ...prev]);
       setCart([]);
@@ -137,11 +147,13 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddProduct = async (p: Omit<Product, 'id'>) => {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.from('products').insert([p]).select();
-      if (!error && data) setProducts([data[0], ...products]);
-    }
+  const addToCart = (product: Product) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      return [...prev, { ...product, quantity: 1 }];
+    });
+    setIsCartOpen(true);
   };
 
   const openProductDetail = (id: string) => {
@@ -187,7 +199,7 @@ const App: React.FC = () => {
         {currentPage === 'admin' && (
           <Admin 
             products={products} orders={orders} categories={categories} staff={staff} customers={customers}
-            onAddProduct={handleAddProduct} 
+            onAddProduct={async (p) => { if (supabase) { const { data } = await supabase.from('products').insert([p]).select(); if (data) setProducts([data[0], ...products]); } }}
             onDeleteProduct={async (id) => { if (supabase) await supabase.from('products').delete().eq('id', id); setProducts(products.filter(p => p.id !== id)); }} 
             onUpdateProduct={async (p) => { if (supabase) await supabase.from('products').update(p).eq('id', p.id); setProducts(products.map(pr => pr.id === p.id ? p : pr)); }} 
             onAddCategory={async (name) => { if (supabase) await supabase.from('categories').insert([{ name }]); setCategories([...categories, name]); }}
@@ -195,7 +207,7 @@ const App: React.FC = () => {
             onAddStaff={async (s) => { if (supabase) { const { data } = await supabase.from('admin_users').insert([s]).select(); if (data) setStaff([...staff, data[0]]); } }}
             onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); setStaff(staff.filter(s => s.id !== id)); }}
             onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); setOrders(orders.map(o => o.id === id ? { ...o, status } : o)); }}
-            onSeedDatabase={async () => { /* Logic from previous turn */ }}
+            onSeedDatabase={async () => { /* Logic to seed initial data */ }}
             onBackToSite={() => setCurrentPage('home')} 
             settings={settings} onUpdateSetting={handleUpdateSetting}
           />
@@ -219,15 +231,6 @@ const App: React.FC = () => {
       <WishlistSidebar isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} items={wishlist} onAddToCart={addToCart} onRemove={(p) => setWishlist(prev => prev.filter(it => it.id !== p.id))} />
     </div>
   );
-
-  function addToCart(product: Product) {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...prev, { ...product, quantity: 1 }];
-    });
-    setIsCartOpen(true);
-  }
 };
 
 export default App;

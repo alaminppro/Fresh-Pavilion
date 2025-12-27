@@ -1,6 +1,5 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { COLORS } from '../constants';
 import { Product, Order, AdminUser } from '../types';
 import { isSupabaseConfigured } from '../lib/supabase';
 

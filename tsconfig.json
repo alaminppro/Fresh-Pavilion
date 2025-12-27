@@ -14,8 +14,13 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-adjacent"
+    "jsx": "react-jsx"
   },
   "include": ["./**/*.ts", "./**/*.tsx"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "vite.config.ts",
+    "tsconfig.node.json"
+  ]
 }

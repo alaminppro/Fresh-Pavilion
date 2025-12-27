@@ -10,10 +10,12 @@ import { createClient } from '@supabase/supabase-js';
 // Helper to safely get environment variables in a Vite context
 const getEnvVar = (key: string): string | undefined => {
   try {
-    // Check if import.meta and import.meta.env exist
-    const meta = import.meta as any;
-    return meta?.env ? meta.env[key] : undefined;
+    // Vite's environment variables are available on import.meta.env
+    // We use a type cast to 'any' to avoid TS errors during the build-up phase
+    const env = (import.meta as any).env;
+    return env ? env[key] : undefined;
   } catch (e) {
+    console.warn(`Could not access environment variable: ${key}`);
     return undefined;
   }
 };

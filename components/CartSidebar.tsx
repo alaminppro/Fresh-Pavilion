@@ -117,13 +117,25 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose, items
           {step === 'checkout' && (
             <div className="space-y-6">
               <div className="space-y-1">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2">ব্যক্তিগত তথ্য</label>
-                <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full border-2 border-slate-50 bg-slate-50 p-4 rounded-2xl font-bold outline-none focus:border-green-500 focus:bg-white transition-all" placeholder="আপনার নাম" />
-                <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="w-full border-2 border-slate-50 bg-slate-50 p-4 rounded-2xl font-bold outline-none focus:border-green-500 focus:bg-white transition-all" placeholder="ফোন নম্বর" />
+                <label className="text-xs font-black text-slate-600 uppercase tracking-widest pl-2">ব্যক্তিগত তথ্য</label>
+                <input 
+                  type="text" 
+                  value={customerName} 
+                  onChange={(e) => setCustomerName(e.target.value)} 
+                  className="w-full border-2 border-slate-50 bg-slate-50 p-4 rounded-2xl font-bold outline-none focus:border-green-500 focus:bg-white transition-all text-slate-900 placeholder:text-slate-400" 
+                  placeholder="আপনার নাম" 
+                />
+                <input 
+                  type="tel" 
+                  value={customerPhone} 
+                  onChange={(e) => setCustomerPhone(e.target.value)} 
+                  className="w-full border-2 border-slate-50 bg-slate-50 p-4 rounded-2xl font-bold outline-none focus:border-green-500 focus:bg-white transition-all text-slate-900 placeholder:text-slate-400" 
+                  placeholder="ফোন নম্বর" 
+                />
               </div>
               
               <div className="space-y-1">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest pl-2">ডেলিভারি পয়েন্ট</label>
+                <label className="text-xs font-black text-slate-600 uppercase tracking-widest pl-2">ডেলিভারি পয়েন্ট</label>
                 <div className="grid grid-cols-2 gap-2">
                   {DELIVERY_LOCATIONS.map(loc => (
                     <button 
@@ -156,7 +168,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose, items
         {items.length > 0 && step !== 'success' && (
           <div className="p-8 border-t bg-slate-50 rounded-t-[3rem] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
             <div className="flex justify-between mb-6">
-              <span className="text-slate-400 font-bold uppercase tracking-widest text-xs self-center">মোট পরিমাণ:</span>
+              <span className="text-slate-600 font-bold uppercase tracking-widest text-xs self-center">মোট পরিমাণ:</span>
               <span className="text-3xl font-black text-slate-800 tabular-nums tracking-tighter">৳{totalPrice}</span>
             </div>
             <button 

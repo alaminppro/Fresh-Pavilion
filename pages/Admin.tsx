@@ -141,11 +141,23 @@ export const Admin: React.FC<AdminProps> = ({
             <h2 className="text-3xl font-black text-slate-800 tracking-tight">অ্যাডমিন প্যানেল</h2>
           </div>
           <form onSubmit={handleLogin} className="space-y-6">
-            <input type="text" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500" placeholder="ইউজারনেম" />
-            <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500" placeholder="পাসওয়ার্ড" />
+            <input 
+              type="text" 
+              value={usernameInput} 
+              onChange={(e) => setUsernameInput(e.target.value)} 
+              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500 text-slate-900 placeholder:text-slate-500" 
+              placeholder="ইউজারনেম" 
+            />
+            <input 
+              type="password" 
+              value={passwordInput} 
+              onChange={(e) => setPasswordInput(e.target.value)} 
+              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500 text-slate-900 placeholder:text-slate-500" 
+              placeholder="পাসওয়ার্ড" 
+            />
             <button type="submit" className="w-full py-4 rounded-2xl text-white font-black text-xl shadow-lg bg-[#2E7D32] hover:bg-green-700 transition-all">প্রবেশ করুন</button>
           </form>
-          <div className="mt-8 text-center"><button onClick={onBackToSite} className="text-slate-400 font-bold text-sm">ওয়েবসাইটে ফিরে যান</button></div>
+          <div className="mt-8 text-center"><button onClick={onBackToSite} className="text-slate-500 font-bold text-sm hover:text-slate-700">ওয়েবসাইটে ফিরে যান</button></div>
         </div>
       </div>
     );
@@ -232,8 +244,8 @@ export const Admin: React.FC<AdminProps> = ({
                   <tr><td colSpan={4} className="py-20 text-center text-slate-400 font-bold">এখনো কোনো গ্রাহক ডাটা তৈরি হয়নি।</td></tr>
                 ) : customers.map(c => (
                   <tr key={c.phone} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4"><div className="font-black text-sm">{c.name || 'নতুন গ্রাহক'}</div><div className="text-[10px] text-slate-400 font-bold">{c.phone}</div></td>
-                    <td className="py-4 font-black">{c.total_orders} টি</td>
+                    <td className="py-4"><div className="font-black text-sm text-slate-900">{c.name || 'নতুন গ্রাহক'}</div><div className="text-[10px] text-slate-400 font-bold">{c.phone}</div></td>
+                    <td className="py-4 font-black text-slate-700">{c.total_orders} টি</td>
                     <td className="py-4 font-black text-green-700">৳{c.total_spent}</td>
                     <td className="py-4"><span className="px-2 py-0.5 bg-slate-100 rounded text-[9px] font-black text-slate-600">{c.last_location}</span></td>
                   </tr>
@@ -257,14 +269,14 @@ export const Admin: React.FC<AdminProps> = ({
                 {orders.length === 0 ? (
                   <tr><td colSpan={6} className="py-20 text-center text-slate-400 font-bold">কোনো অর্ডার পাওয়া যায়নি।</td></tr>
                 ) : orders.map(o => (
-                  <tr key={o.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={o.id} className="hover:bg-slate-50 transition-colors text-slate-900">
                     <td className="py-4 font-black text-sm">{o.id}</td>
                     <td className="py-4"><div className="font-black text-xs">{o.customerName}</div><div className="text-[10px] text-slate-400">{o.customerPhone}</div></td>
                     <td className="py-4 text-[10px] font-bold">{o.location}</td>
                     <td className="py-4 font-black text-green-700">৳{o.totalPrice}</td>
                     <td className="py-4"><span className={`px-2 py-0.5 rounded text-[8px] font-black ${o.status === 'Delivered' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{o.status}</span></td>
                     <td className="py-4 text-right">
-                      <select value={o.status} onChange={e => onUpdateOrderStatus(o.id, e.target.value as Order['status'])} className="bg-slate-50 border rounded p-1 text-[10px] font-black">
+                      <select value={o.status} onChange={e => onUpdateOrderStatus(o.id, e.target.value as Order['status'])} className="bg-slate-50 border rounded p-1 text-[10px] font-black outline-none focus:border-green-500 text-slate-900">
                         <option value="Pending">Pending</option><option value="Delivered">Delivered</option><option value="Cancelled">Cancelled</option>
                       </select>
                     </td>
@@ -279,7 +291,7 @@ export const Admin: React.FC<AdminProps> = ({
           <div className="bg-white p-8 rounded-[2rem] shadow-sm max-w-2xl">
             <h2 className="text-xl font-black mb-8">ক্যাটাগরি ব্যবস্থাপনা</h2>
             <div className="flex gap-3 mb-8">
-              <input type="text" value={newCatName} onChange={e=>setNewCatName(e.target.value)} className="flex-grow bg-slate-50 border border-slate-100 rounded-xl p-4 font-bold outline-none" placeholder="নতুন ক্যাটাগরি" />
+              <input type="text" value={newCatName} onChange={e=>setNewCatName(e.target.value)} className="flex-grow bg-slate-50 border border-slate-100 rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" placeholder="নতুন ক্যাটাগরি" />
               <button onClick={() => { if(newCatName){ onAddCategory(newCatName); setNewCatName(''); } }} className="px-8 py-4 bg-slate-900 text-white font-black rounded-xl">যোগ করুন</button>
             </div>
             <div className="space-y-3">
@@ -300,7 +312,7 @@ export const Admin: React.FC<AdminProps> = ({
                <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-2">🎨 সাইট ব্র্যান্ডিং ও ভিজ্যুয়াল</h3>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">সাইট লোগো (Square)</label>
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest block">সাইট লোগো (Square)</label>
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border flex items-center justify-center">
                         {settings.logo ? <img src={settings.logo} className="w-full h-full object-cover" /> : <span className="font-black text-green-600">FP</span>}
@@ -310,7 +322,7 @@ export const Admin: React.FC<AdminProps> = ({
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">হিরো ব্যানার ইমেজ (Landing Page)</label>
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest block">হিরো ব্যানার ইমেজ (Landing Page)</label>
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border">
                         <img src={settings.hero_image} className="w-full h-full object-cover" />
@@ -320,19 +332,34 @@ export const Admin: React.FC<AdminProps> = ({
                     </div>
                   </div>
                   <div className="col-span-1 md:col-span-2 space-y-4">
-                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">সাইট সেটিংস</label>
+                     <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest block">সাইট সেটিংস</label>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-1">
                           <span className="text-[9px] font-bold text-slate-500">সাইটের নাম</span>
-                          <input type="text" value={settings.site_name} onChange={e => onUpdateSetting('site_name', e.target.value)} className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500" />
+                          <input 
+                            type="text" 
+                            value={settings.site_name} 
+                            onChange={e => onUpdateSetting('site_name', e.target.value)} 
+                            className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500 text-slate-900" 
+                          />
                         </div>
                         <div className="space-y-1">
                           <span className="text-[9px] font-bold text-slate-500">পায়রা হোয়াটসঅ্যাপ নম্বর</span>
-                          <input type="text" value={settings.whatsapp_number} onChange={e => onUpdateSetting('whatsapp_number', e.target.value)} className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500" />
+                          <input 
+                            type="text" 
+                            value={settings.whatsapp_number} 
+                            onChange={e => onUpdateSetting('whatsapp_number', e.target.value)} 
+                            className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500 text-slate-900" 
+                          />
                         </div>
                         <div className="space-y-1">
                           <span className="text-[9px] font-bold text-slate-500">সাপোর্ট ফোন নম্বর</span>
-                          <input type="text" value={settings.support_phone} onChange={e => onUpdateSetting('support_phone', e.target.value)} className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500" />
+                          <input 
+                            type="text" 
+                            value={settings.support_phone} 
+                            onChange={e => onUpdateSetting('support_phone', e.target.value)} 
+                            className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500 text-slate-900" 
+                          />
                         </div>
                      </div>
                   </div>
@@ -347,7 +374,7 @@ export const Admin: React.FC<AdminProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
                   <div>
-                    <div className="font-black text-sm">admin (Master)</div>
+                    <div className="font-black text-sm text-slate-900">admin (Master)</div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master Admin</div>
                   </div>
                   <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-[9px] font-black">সিস্টেম</span>
@@ -355,7 +382,7 @@ export const Admin: React.FC<AdminProps> = ({
                 {staff.map(s => (
                   <div key={s.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
                     <div>
-                      <div className="font-black text-sm">{s.username}</div>
+                      <div className="font-black text-sm text-slate-900">{s.username}</div>
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.role === 'staff' ? 'Staff' : 'Sub-Admin'}</div>
                     </div>
                     <button onClick={() => onDeleteStaff(s.id)} className="text-red-500 hover:text-red-700 transition-colors">🗑️</button>
@@ -372,11 +399,11 @@ export const Admin: React.FC<AdminProps> = ({
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur" onClick={() => setShowStaffModal(false)} />
           <div className="relative bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl">
-            <h3 className="text-2xl font-black mb-8">নতুন স্টাফ যোগ করুন</h3>
+            <h3 className="text-2xl font-black mb-8 text-slate-800">নতুন স্টাফ যোগ করুন</h3>
             <div className="space-y-4">
-              <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none" value={newStaff.username} onChange={e=>setNewStaff({...newStaff, username: e.target.value})} placeholder="ইউজারনেম" />
-              <input type="password" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none" value={newStaff.password} onChange={e=>setNewStaff({...newStaff, password: e.target.value})} placeholder="পাসওয়ার্ড" />
-              <select className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none cursor-pointer" value={newStaff.role} onChange={e=>setNewStaff({...newStaff, role: e.target.value as 'staff' | 'admin'})}>
+              <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" value={newStaff.username} onChange={e=>setNewStaff({...newStaff, username: e.target.value})} placeholder="ইউজারনেম" />
+              <input type="password" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" value={newStaff.password} onChange={e=>setNewStaff({...newStaff, password: e.target.value})} placeholder="পাসওয়ার্ড" />
+              <select className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none cursor-pointer text-slate-900" value={newStaff.role} onChange={e=>setNewStaff({...newStaff, role: e.target.value as 'staff' | 'admin'})}>
                 <option value="staff">স্টাফ (Staff)</option>
                 <option value="admin">সাব-অ্যাডমিন (Sub-Admin)</option>
               </select>
@@ -394,15 +421,35 @@ export const Admin: React.FC<AdminProps> = ({
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur" onClick={() => setShowProductModal(false)} />
           <div className="relative bg-white w-full max-w-xl rounded-[2.5rem] p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <h3 className="text-2xl font-black mb-8 tracking-tighter">{editingProduct ? 'সংশোধন' : 'নতুন পণ্য এন্ট্রি'}</h3>
+            <h3 className="text-2xl font-black mb-8 tracking-tighter text-slate-800">{editingProduct ? 'সংশোধন' : 'নতুন পণ্য এন্ট্রি'}</h3>
             <div className="grid grid-cols-2 gap-5">
-              <div className="col-span-2"><input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1" value={formState.name} onChange={e=>setFormState({...formState, name: e.target.value})} placeholder="পণ্যের নাম" /></div>
+              <div className="col-span-2">
+                <input 
+                  type="text" 
+                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1 text-slate-900 focus:border-green-500" 
+                  value={formState.name} 
+                  onChange={e=>setFormState({...formState, name: e.target.value})} 
+                  placeholder="পণ্যের নাম" 
+                />
+              </div>
               <div>
-                <select className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none cursor-pointer mt-1" value={formState.category} onChange={e=>setFormState({...formState, category: e.target.value})}>
+                <select 
+                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none cursor-pointer mt-1 text-slate-900" 
+                  value={formState.category} 
+                  onChange={e=>setFormState({...formState, category: e.target.value})}
+                >
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div><input type="number" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1" value={formState.price} onChange={e=>setFormState({...formState, price: Number(e.target.value)})} placeholder="মূল্য (৳)" /></div>
+              <div>
+                <input 
+                  type="number" 
+                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1 text-slate-900 focus:border-green-500" 
+                  value={formState.price} 
+                  onChange={e=>setFormState({...formState, price: Number(e.target.value)})} 
+                  placeholder="মূল্য (৳)" 
+                />
+              </div>
               <div className="col-span-2">
                 <div className="flex items-center gap-4 mt-1">
                   <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border">{formState.image && <img src={formState.image} className="w-full h-full object-cover" />}</div>

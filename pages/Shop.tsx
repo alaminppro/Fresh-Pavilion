@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { COLORS } from '../constants';
 import { ProductCard } from '../components/ProductCard';
@@ -52,7 +53,7 @@ export const Shop: React.FC<ShopProps> = ({ products, wishlist, onAddToCart, onT
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="পণ্য বা কিউওয়ার্ড খুঁজুন..."
-              className="flex-grow px-3 py-2.5 bg-transparent outline-none text-slate-700 font-bold text-base placeholder:text-slate-300"
+              className="flex-grow px-3 py-2.5 bg-transparent outline-none text-slate-900 font-bold text-base placeholder:text-slate-400"
             />
             <div className="h-6 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
             <div className="pr-1 flex items-center">

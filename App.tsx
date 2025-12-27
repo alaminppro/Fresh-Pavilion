@@ -57,7 +57,6 @@ const App: React.FC = () => {
       return;
     }
     try {
-      // Individual table fetching to prevent crash on single table failure
       const [
         { data: dbProducts },
         { data: dbOrders },
@@ -124,7 +123,7 @@ const App: React.FC = () => {
       const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
       const now = new Date().toISOString();
 
-      // 1. Insert Order
+      // 1. Insert Order first
       const { error: orderError } = await supabase.from('orders').insert([{
         id: orderId,
         customer_name: orderData.customerName,
@@ -138,12 +137,15 @@ const App: React.FC = () => {
 
       if (orderError) throw orderError;
 
-      // 2. Sync Customer Data
-      const { data: existingCust } = await supabase
+      // 2. Synchronize Customer Information
+      // Try to get existing customer data
+      const { data: existingCust, error: fetchCustError } = await supabase
         .from('customers')
         .select('*')
         .eq('phone', orderData.customerPhone)
         .maybeSingle();
+
+      if (fetchCustError) console.warn("Failed to check existing customer:", fetchCustError);
 
       const customerPayload = {
         phone: orderData.customerPhone,
@@ -154,14 +156,23 @@ const App: React.FC = () => {
         updated_at: now
       };
 
-      await supabase.from('customers').upsert([customerPayload], { onConflict: 'phone' });
+      // UPSERT will insert if doesn't exist, or update if phone matches
+      const { error: upsertError } = await supabase
+        .from('customers')
+        .upsert([customerPayload], { onConflict: 'phone' });
+
+      if (upsertError) {
+        console.error("Customer upsert failed:", upsertError);
+        // We don't fail the whole function if customer sync fails, but we log it.
+      }
       
       setCart([]);
+      // Crucial: Refresh all data so the Admin panel sees the new order and customer
       await fetchInitialData(); 
       return true;
     } catch (err: any) {
-      console.error("Order process failed:", err);
-      alert("অর্ডার সম্পন্ন করা যায়নি: " + (err.message || "সার্ভার এরর"));
+      console.error("Critical order processing failure:", err);
+      alert("অর্ডার সম্পন্ন করা যায়নি: " + (err.message || "সার্ভার সংযোগ সমস্যা"));
       return false;
     }
   };

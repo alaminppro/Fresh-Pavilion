@@ -75,23 +75,8 @@ const App: React.FC = () => {
         supabase.from('customers').select('*').order('total_spent', { ascending: false })
       ]);
       
-      if (dbProducts) {
-        const mappedProducts: Product[] = dbProducts.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          price: Number(p.price),
-          description: p.description,
-          longDescription: p.long_description,
-          image: p.image,
-          category: p.category,
-          stock: p.stock,
-          unit: p.unit,
-          isFeatured: p.is_featured === true,
-          isBestSelling: p.is_bestselling === true,
-          isNew: p.is_new === true
-        }));
-        setProducts(mappedProducts);
-      }
+      if (dbProducts && dbProducts.length > 0) setProducts(dbProducts as Product[]);
+      else setProducts(INITIAL_PRODUCTS as Product[]);
       
       if (dbOrders) {
         const mappedOrders: Order[] = dbOrders.map((o: any) => ({
@@ -126,44 +111,80 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddProduct = async (p: Omit<Product, 'id'>) => {
-    if (!supabase) return;
-    const payload = {
-      name: p.name,
-      price: p.price,
-      description: p.description,
-      long_description: p.longDescription,
-      image: p.image,
-      category: p.category,
-      stock: p.stock,
-      unit: p.unit,
-      is_featured: p.isFeatured || false,
-      is_bestselling: p.isBestSelling || false,
-      is_new: p.isNew || false
-    };
-    const { error } = await supabase.from('products').insert([payload]);
-    if (error) console.error("Error adding product:", error);
-    fetchInitialData();
+  const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'status'>): Promise<boolean> => {
+    if (!isSupabaseConfigured || !supabase) {
+      const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
+      const now = new Date().toISOString();
+      const localOrder: Order = { ...orderData, id: orderId, status: 'Pending', created_at: now };
+      setOrders(prev => [localOrder, ...prev]);
+      setCart([]);
+      return true;
+    }
+
+    try {
+      const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
+      const now = new Date().toISOString();
+
+      const { error: orderError } = await supabase.from('orders').insert([{
+        id: orderId,
+        customer_name: orderData.customerName,
+        customer_phone: orderData.customerPhone,
+        location: orderData.location,
+        items: orderData.items,
+        total_price: orderData.totalPrice,
+        status: 'Pending',
+        created_at: now
+      }]);
+
+      if (orderError) throw orderError;
+
+      const { data: existingCust } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('customer_phone', orderData.customerPhone)
+        .maybeSingle();
+
+      const customerPayload = {
+        customer_phone: orderData.customerPhone,
+        customer_name: orderData.customerName,
+        total_orders: (existingCust?.total_orders || 0) + 1,
+        total_spent: Number(existingCust?.total_spent || 0) + Number(orderData.totalPrice)
+      };
+
+      await supabase.from('customers').upsert([customerPayload], { onConflict: 'customer_phone' });
+      
+      setCart([]);
+      await fetchInitialData(); 
+      return true;
+    } catch (err: any) {
+      console.error("Order processing error:", err);
+      alert("অর্ডার সম্পন্ন করা যায়নি: " + (err.message || "সার্ভার সংযোগ সমস্যা"));
+      return false;
+    }
   };
 
-  const handleUpdateProduct = async (p: Product) => {
-    if (!supabase) return;
-    const payload = {
-      name: p.name,
-      price: p.price,
-      description: p.description,
-      long_description: p.longDescription,
-      image: p.image,
-      category: p.category,
-      stock: p.stock,
-      unit: p.unit,
-      is_featured: p.isFeatured || false,
-      is_bestselling: p.isBestSelling || false,
-      is_new: p.isNew || false
-    };
-    const { error } = await supabase.from('products').update(payload).eq('id', p.id);
-    if (error) console.error("Error updating product:", error);
-    fetchInitialData();
+  const syncCustomersFromOrders = async () => {
+    if (!isSupabaseConfigured || !supabase) return;
+    try {
+      const { data: allOrders, error: orderErr } = await supabase.from('orders').select('*');
+      if (orderErr) throw orderErr;
+      if (!allOrders || allOrders.length === 0) return;
+
+      const customerMap = new Map();
+      allOrders.forEach(order => {
+        const phone = order.customer_phone;
+        const current = customerMap.get(phone) || { 
+          customer_phone: phone, customer_name: order.customer_name, total_orders: 0, total_spent: 0 
+        };
+        current.total_orders += 1;
+        current.total_spent += Number(order.total_price);
+        customerMap.set(phone, current);
+      });
+
+      const customerPayloads = Array.from(customerMap.values());
+      await supabase.from('customers').upsert(customerPayloads, { onConflict: 'customer_phone' });
+      await fetchInitialData();
+    } catch (err) { console.error(err); }
   };
 
   const addToCart = (product: Product) => {
@@ -221,7 +242,6 @@ const App: React.FC = () => {
             onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
             onProductClick={openProductDetail} 
             heroImage={settings.hero_image} siteName={settings.site_name} whatsappNumber={settings.whatsapp_number}
-            categories={categories}
           />
         )}
         {currentPage === 'shop' && (
@@ -236,16 +256,16 @@ const App: React.FC = () => {
         {currentPage === 'admin' && (
           <Admin 
             products={products} orders={orders} categories={categories} staff={staff} customers={customers}
-            onAddProduct={handleAddProduct}
-            onDeleteProduct={async (id) => { if (supabase) await supabase.from('products').delete().eq('id', id); fetchInitialData(); }} 
-            onUpdateProduct={handleUpdateProduct} 
-            onAddCategory={async (name) => { if (supabase) await supabase.from('categories').insert([{ name }]); fetchInitialData(); }}
-            onDeleteCategory={async (name) => { if (supabase) await supabase.from('categories').delete().eq('name', name); fetchInitialData(); }}
-            onAddStaff={async (s) => { if (supabase) { await supabase.from('admin_users').insert([s]); fetchInitialData(); } }}
-            onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); fetchInitialData(); }}
-            onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); fetchInitialData(); }}
+            onAddProduct={async (p) => { if (supabase) { const { data } = await supabase.from('products').insert([p]).select(); if (data) setProducts([data[0], ...products]); } }}
+            onDeleteProduct={async (id) => { if (supabase) await supabase.from('products').delete().eq('id', id); setProducts(products.filter(p => p.id !== id)); }} 
+            onUpdateProduct={async (p) => { if (supabase) await supabase.from('products').update(p).eq('id', p.id); setProducts(products.map(pr => pr.id === p.id ? p : pr)); }} 
+            onAddCategory={async (name) => { if (supabase) await supabase.from('categories').insert([{ name }]); setCategories([...categories, name]); }}
+            onDeleteCategory={async (name) => { if (supabase) await supabase.from('categories').delete().eq('name', name); setCategories(categories.filter(c => c !== name)); }}
+            onAddStaff={async (s) => { if (supabase) { const { data } = await supabase.from('admin_users').insert([s]).select(); if (data) setStaff([...staff, data[0]]); } }}
+            onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); setStaff(staff.filter(s => s.id !== id)); }}
+            onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); setOrders(orders.map(o => o.id === id ? { ...o, status } : o)); }}
             onSeedDatabase={fetchInitialData}
-            onSyncCustomers={() => {}} 
+            onSyncCustomers={syncCustomersFromOrders}
             onBackToSite={() => setCurrentPage('home')} 
             settings={{ ...settings, lastSync }} onUpdateSetting={handleUpdateSetting}
           />
@@ -268,7 +288,7 @@ const App: React.FC = () => {
         isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} 
         onRemove={(id) => setCart(cart.filter(i => i.id !== id))} 
         onUpdateQuantity={(id, d) => setCart(cart.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + d)} : i))} 
-        onCheckout={async (data) => true} // Placeholder
+        onCheckout={createOrder} 
       />
       <WishlistSidebar isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} items={wishlist} onAddToCart={addToCart} onRemove={(p) => setWishlist(prev => prev.filter(it => it.id !== p.id))} />
       <FloatingWhatsApp phoneNumber={settings.whatsapp_number} />

@@ -16,9 +16,6 @@ export interface Product {
   category: string;
   stock: number;
   unit: string;
-  isFeatured?: boolean;
-  isBestSelling?: boolean;
-  isNew?: boolean;
 }
 
 export interface CartItem extends Product {

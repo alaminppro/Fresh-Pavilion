@@ -10,14 +10,10 @@ CREATE TABLE IF NOT EXISTS products (
   name TEXT NOT NULL,
   price NUMERIC NOT NULL,
   description TEXT,
-  long_description TEXT,
   image TEXT,
   category TEXT,
   stock INTEGER DEFAULT 0,
   unit TEXT,
-  is_featured BOOLEAN DEFAULT false,
-  is_bestselling BOOLEAN DEFAULT false,
-  is_new BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
@@ -33,15 +29,14 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- 3. Create Customers Table
+-- 3. Create Customers Table (Corrected based on screenshots)
 CREATE TABLE IF NOT EXISTS customers (
   customer_phone TEXT PRIMARY KEY, -- Used for identification and deduplication
   customer_name TEXT NOT NULL,
   total_orders INTEGER DEFAULT 0,
   total_spent NUMERIC DEFAULT 0,
   last_location TEXT,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
 -- 4. Create Categories Table

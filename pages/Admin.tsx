@@ -222,7 +222,6 @@ export const Admin: React.FC<AdminProps> = ({
           </div>
         )}
 
-        {/* Other tabs remain unchanged... */}
         {activeTab === 'Customers' && (
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -424,7 +423,7 @@ export const Admin: React.FC<AdminProps> = ({
                 <textarea className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500 h-32 resize-none" value={formState.longDescription} onChange={e=>setFormState({...formState, longDescription: e.target.value})} placeholder="পণ্যের গুণাগুণ ও বিস্তারিত এখানে লিখুন..." />
               </div>
 
-              {/* Tag Selection Controls */}
+              {/* Tag Selection Controls - Added for automated sections */}
               <div className="col-span-2 bg-slate-50 p-6 rounded-2xl border border-slate-100">
                 <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4 block">হোমপেজ ফিচার (Home Sections Control)</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

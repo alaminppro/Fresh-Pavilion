@@ -17,7 +17,6 @@ interface HomeProps {
   categories: string[];
 }
 
-// Utility to get English Name for Category subheadings
 const getCategoryEnglishName = (cat: string) => {
   const map: Record<string, string> = {
     'মধু ও তেল': 'Honey & Oil',
@@ -36,7 +35,6 @@ export const Home: React.FC<HomeProps> = ({
 }) => {
   const isInWishlist = (id: string) => wishlist.some(p => p.id === id);
 
-  // Filter products based on Admin-selected flags (limit to 4)
   const featuredProducts = products.filter(p => p.isFeatured).slice(0, 4);
   const bestSellingProducts = products.filter(p => p.isBestSelling).slice(0, 4);
   const newArrivals = products.filter(p => p.isNew).slice(0, 4);
@@ -84,11 +82,11 @@ export const Home: React.FC<HomeProps> = ({
           </div>
         </section>
 
-        {/* Feature Sections */}
+        {/* Automatic Static Sections */}
         {featuredProducts.length > 0 && (
           <ProductSection 
             title="জনপ্রিয় পণ্যসমূহ" 
-            subtitle="Featured Items" 
+            subtitle="Featured Selection" 
             products={featuredProducts} 
             onAddToCart={onAddToCart} 
             onToggleWishlist={onToggleWishlist} 
@@ -101,7 +99,7 @@ export const Home: React.FC<HomeProps> = ({
         {bestSellingProducts.length > 0 && (
           <ProductSection 
             title="বেস্ট সেলিং" 
-            subtitle="Best Sellers" 
+            subtitle="Top Rated Choices" 
             products={bestSellingProducts} 
             onAddToCart={onAddToCart} 
             onToggleWishlist={onToggleWishlist} 
@@ -114,7 +112,7 @@ export const Home: React.FC<HomeProps> = ({
         {newArrivals.length > 0 && (
           <ProductSection 
             title="নতুন পণ্য" 
-            subtitle="New Arrivals" 
+            subtitle="Fresh Arrivals" 
             products={newArrivals} 
             onAddToCart={onAddToCart} 
             onToggleWishlist={onToggleWishlist} 

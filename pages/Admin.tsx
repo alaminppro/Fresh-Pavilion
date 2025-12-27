@@ -27,6 +27,8 @@ interface AdminProps {
   onUpdateSetting: (key: string, value: string) => void;
 }
 
+const UNIT_OPTIONS = ['টি', 'কেজি', 'গ্রাম', 'লিটার', 'মিলি', 'হালি', 'ডজন', 'প্যাকেট'];
+
 export const Admin: React.FC<AdminProps> = ({ 
   products, orders, categories, staff, customers,
   onAddProduct, onDeleteProduct, onUpdateProduct,
@@ -435,7 +437,15 @@ export const Admin: React.FC<AdminProps> = ({
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">একক (Unit)</label>
-                <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" value={formState.unit} onChange={e=>setFormState({...formState, unit: e.target.value})} placeholder="টি / কেজি / গ্রাম" />
+                <select 
+                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none cursor-pointer text-slate-900" 
+                  value={formState.unit} 
+                  onChange={e=>setFormState({...formState, unit: e.target.value})}
+                >
+                  {UNIT_OPTIONS.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="mt-10 flex gap-4">

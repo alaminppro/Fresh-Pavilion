@@ -46,7 +46,9 @@ export const Home: React.FC<HomeProps> = ({
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 w-full">
           <div className="max-w-2xl bg-white/5 backdrop-blur-xl p-10 rounded-[3rem] border border-white/10 shadow-2xl">
-            <span className="inline-block px-4 py-1.5 bg-green-500 text-white text-[10px] font-black uppercase tracking-widest rounded-full mb-6">ক্যাম্পাস ডেলিভারি চালু আছে 🎓</span>
+            <span className="inline-flex items-center gap-2 px-5 py-2 bg-green-500 text-white text-[11px] font-black uppercase tracking-widest rounded-full mb-8 shadow-lg shadow-green-500/20 border border-green-400/30 animate-flicker-status">
+              ক্যাম্পাস ডেলিভারি চালু আছে 🎓
+            </span>
             <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-[1.8] tracking-tight">
               <span className="block mb-6">{siteName}</span>
               <span style={{ color: COLORS.SECONDARY }} className="block">অর্গানিক ও খাঁটি</span>

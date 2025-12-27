@@ -29,6 +29,23 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #1B5E20;
         }
+
+        /* Custom flicker animation for status badges */
+        @keyframes flicker-status {
+            0%, 100% { 
+                opacity: 1; 
+                filter: brightness(1.1); 
+                box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+            }
+            50% { 
+                opacity: 0.8; 
+                filter: brightness(0.9);
+                box-shadow: 0 0 2px rgba(34, 197, 94, 0.1);
+            }
+        }
+        .animate-flicker-status {
+            animation: flicker-status 3s infinite ease-in-out;
+        }
     </style>
 <script type="importmap">
 {

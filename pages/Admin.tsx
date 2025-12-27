@@ -64,12 +64,13 @@ export const Admin: React.FC<AdminProps> = ({
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const masterAdmin = (usernameInput === 'admin' && passwordInput === '1234');
+    // Updated Credentials
+    const masterAdmin = (usernameInput === 'fpadmin2025' && passwordInput === 'Fp2025@2030');
     const staffMatch = staff.find(s => s.username === usernameInput && s.password === passwordInput);
     
     if (masterAdmin || staffMatch) {
       const user: AdminUser = masterAdmin 
-        ? { id: '0', username: 'Master Admin', phone: '', password: '', role: 'admin' }
+        ? { id: '0', username: 'fpadmin2025', phone: '', password: '', role: 'admin' }
         : staffMatch!;
       setIsLoggedIn(true);
       setCurrentUser(user);
@@ -133,6 +134,10 @@ export const Admin: React.FC<AdminProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const toggleStock = () => {
+    setFormState(prev => ({ ...prev, stock: prev.stock > 0 ? 0 : 10 }));
   };
 
   if (!isLoggedIn) {
@@ -209,11 +214,11 @@ export const Admin: React.FC<AdminProps> = ({
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-xl font-black">পণ্য ব্যবস্থাপনা</h2>
-              <button onClick={() => { setEditingProduct(null); setShowProductModal(true); }} className="px-5 py-2.5 bg-green-600 text-white font-black rounded-xl text-sm shadow-md hover:bg-green-700 transition-all">+ নতুন পণ্য</button>
+              <button onClick={() => { setEditingProduct(null); setFormState({name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি'}); setShowProductModal(true); }} className="px-5 py-2.5 bg-green-600 text-white font-black rounded-xl text-sm shadow-md hover:bg-green-700 transition-all">+ নতুন পণ্য</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map(p => (
-                <div key={p.id} className="p-4 bg-slate-50 rounded-2xl flex gap-4 border border-slate-100 hover:shadow-md transition-shadow">
+                <div key={p.id} className="p-4 bg-slate-50 rounded-2xl flex gap-4 border border-slate-100 hover:shadow-md transition-shadow relative">
                   <img src={p.image} className="w-16 h-16 rounded-xl object-cover" />
                   <div className="flex-grow overflow-hidden">
                     <h4 className="font-black text-sm truncate text-slate-800">{p.name}</h4>
@@ -226,6 +231,7 @@ export const Admin: React.FC<AdminProps> = ({
                       </div>
                     </div>
                   </div>
+                  {p.stock <= 0 && <div className="absolute top-2 right-2 px-2 py-0.5 bg-red-500 text-white text-[8px] font-black rounded-full uppercase">Stock Out</div>}
                 </div>
               ))}
             </div>
@@ -388,7 +394,7 @@ export const Admin: React.FC<AdminProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
                   <div>
-                    <div className="font-black text-sm text-slate-900">admin (Master)</div>
+                    <div className="font-black text-sm text-slate-900">fpadmin2025 (Master)</div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master Admin</div>
                   </div>
                   <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-[9px] font-black">সিস্টেম</span>
@@ -432,21 +438,23 @@ export const Admin: React.FC<AdminProps> = ({
       {showProductModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur" onClick={() => setShowProductModal(false)} />
-          <div className="relative bg-white w-full max-w-xl rounded-[2.5rem] p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
+          <div className="relative bg-white w-full max-w-2xl rounded-[2.5rem] p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
             <h3 className="text-2xl font-black mb-8 tracking-tighter text-slate-800">{editingProduct ? 'সংশোধন' : 'নতুন পণ্য এন্ট্রি'}</h3>
             <div className="grid grid-cols-2 gap-5">
               <div className="col-span-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">পণ্যের নাম</label>
                 <input 
                   type="text" 
-                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1 text-slate-900 focus:border-green-500" 
+                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" 
                   value={formState.name} 
                   onChange={e=>setFormState({...formState, name: e.target.value})} 
-                  placeholder="পণ্যের নাম" 
+                  placeholder="উদা: অর্গানিক মধু" 
                 />
               </div>
               <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">ক্যাটাগরি</label>
                 <select 
-                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none cursor-pointer mt-1 text-slate-900" 
+                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none cursor-pointer text-slate-900" 
                   value={formState.category} 
                   onChange={e=>setFormState({...formState, category: e.target.value})}
                 >
@@ -454,20 +462,71 @@ export const Admin: React.FC<AdminProps> = ({
                 </select>
               </div>
               <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">মূল্য (৳)</label>
                 <input 
                   type="number" 
-                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1 text-slate-900 focus:border-green-500" 
+                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" 
                   value={formState.price} 
                   onChange={e=>setFormState({...formState, price: Number(e.target.value)})} 
-                  placeholder="মূল্য (৳)" 
+                  placeholder="৳৪৫০" 
                 />
               </div>
               <div className="col-span-2">
-                <div className="flex items-center gap-4 mt-1">
-                  <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border">{formState.image && <img src={formState.image} className="w-full h-full object-cover" />}</div>
-                  <button onClick={() => fileInputRef.current?.click()} className="flex-grow py-4 border-2 border-dashed rounded-xl font-black text-slate-400 text-xs">ছবি নির্বাচন করুন</button>
-                  <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e) => handleImageUpload(e, 'product')} />
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">সংক্ষিপ্ত বিবরণ</label>
+                <input 
+                  type="text" 
+                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" 
+                  value={formState.description} 
+                  onChange={e=>setFormState({...formState, description: e.target.value})} 
+                  placeholder="উদা: ১০০% খাঁটি প্রাকৃতিক মধু" 
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">বিস্তারিত বিবরণ (Description)</label>
+                <textarea 
+                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500 h-32 resize-none" 
+                  value={formState.longDescription} 
+                  onChange={e=>setFormState({...formState, longDescription: e.target.value})} 
+                  placeholder="পণ্যের গুণাগুণ ও বিস্তারিত এখানে লিখুন..." 
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">পণ্যের ছবি (URL অথবা আপলোড)</label>
+                <div className="space-y-3">
+                  <input 
+                    type="text" 
+                    className="w-full bg-slate-50 border rounded-xl p-3 font-bold outline-none text-slate-900 focus:border-blue-500 text-xs" 
+                    value={formState.image} 
+                    onChange={e=>setFormState({...formState, image: e.target.value})} 
+                    placeholder="ইমেজ লিংক এখানে পেস্ট করুন (Optional)" 
+                  />
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 h-20 rounded-xl bg-slate-100 overflow-hidden border border-slate-200">
+                       {formState.image ? <img src={formState.image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">No Image</div>}
+                    </div>
+                    <button onClick={() => fileInputRef.current?.click()} className="flex-grow py-3 border-2 border-dashed rounded-xl font-black text-slate-400 text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all">গ্যালারি থেকে ফটো আপলোড</button>
+                    <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e) => handleImageUpload(e, 'product')} />
+                  </div>
                 </div>
+              </div>
+              <div>
+                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">স্টক স্ট্যাটাস</label>
+                 <button 
+                  onClick={toggleStock}
+                  className={`w-full py-4 rounded-xl font-black text-sm transition-all border-2 ${formState.stock > 0 ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}
+                 >
+                   {formState.stock > 0 ? '✅ স্টক আছে (In Stock)' : '❌ স্টক নেই (Stock Out)'}
+                 </button>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">একক (Unit)</label>
+                <input 
+                  type="text" 
+                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" 
+                  value={formState.unit} 
+                  onChange={e=>setFormState({...formState, unit: e.target.value})} 
+                  placeholder="টি / কেজি / গ্রাম" 
+                />
               </div>
             </div>
             <div className="mt-10 flex gap-4">

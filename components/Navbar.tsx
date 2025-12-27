@@ -19,7 +19,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white shadow-md z-50 h-20">
-      <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+      <div className="max-w-[1600px] mx-auto px-6 md:px-12 h-full flex items-center justify-between">
         <div className="flex items-center space-x-3 cursor-pointer" onClick={() => onNavigate('home')}>
           <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden bg-slate-100">
             {logo ? <img src={logo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center bg-green-600 text-white font-black text-xl">FP</div>}

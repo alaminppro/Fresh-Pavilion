@@ -235,7 +235,7 @@ const App: React.FC = () => {
           siteName={settings.site_name}
         />
       )}
-      <main className={`flex-grow ${isAdminMode ? '' : 'pt-20'}`}>
+      <main className={`flex-grow ${isAdminMode ? '' : 'pt-20'} px-6 md:px-12 max-w-[1600px] mx-auto w-full`}>
         {currentPage === 'home' && (
           <Home 
             products={products} wishlist={wishlist} onShopNow={() => setCurrentPage('shop')} onAddToCart={addToCart} 

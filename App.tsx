@@ -7,6 +7,7 @@ import { Admin } from './pages/Admin';
 import { ProductDetail } from './pages/ProductDetail';
 import { CartSidebar } from './components/CartSidebar';
 import { WishlistSidebar } from './components/WishlistSidebar';
+import { FloatingWhatsApp } from './components/FloatingWhatsApp';
 import { Product, CartItem, Order, AdminUser } from './types';
 import { Footer } from './components/Footer';
 import { INITIAL_PRODUCTS } from './constants';
@@ -24,9 +25,10 @@ interface SiteSettings {
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [prevPage, setPrevPage] = useState<Page>('home');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>(['খাবার', 'পানীয়', 'স্বাস্থ্য', 'অন্যান্য']);
+  const [categories, setCategories] = useState<string[]>(['মধু ও তেল', 'শুকনো খাবার', 'মশলা ও গুড়', 'ফল ও সবজি', 'স্বাস্থ্য', 'অন্যান্য']);
   const [staff, setStaff] = useState<AdminUser[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -41,7 +43,7 @@ const App: React.FC = () => {
     site_name: 'ফ্রেশ প্যাভিলিয়ন',
     logo: null,
     hero_image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1600',
-    whatsapp_number: '01400065088',
+    whatsapp_number: '01630145305',
     support_phone: '01630145305'
   });
 
@@ -91,7 +93,7 @@ const App: React.FC = () => {
       }
 
       if (dbStaff) setStaff(dbStaff as AdminUser[]);
-      if (dbCategories) setCategories(dbCategories.map(c => c.name));
+      if (dbCategories && dbCategories.length > 0) setCategories(dbCategories.map(c => c.name));
       if (dbCustomers) setCustomers(dbCustomers || []);
       
       if (dbSettings) {
@@ -123,7 +125,6 @@ const App: React.FC = () => {
       const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
       const now = new Date().toISOString();
 
-      // 1. Insert Order
       const { error: orderError } = await supabase.from('orders').insert([{
         id: orderId,
         customer_name: orderData.customerName,
@@ -137,7 +138,6 @@ const App: React.FC = () => {
 
       if (orderError) throw orderError;
 
-      // 2. Update Customer Table (Using columns from your screenshot)
       const { data: existingCust } = await supabase
         .from('customers')
         .select('*')
@@ -151,11 +151,7 @@ const App: React.FC = () => {
         total_spent: Number(existingCust?.total_spent || 0) + Number(orderData.totalPrice)
       };
 
-      const { error: upsertError } = await supabase
-        .from('customers')
-        .upsert([customerPayload], { onConflict: 'customer_phone' });
-
-      if (upsertError) console.error("Customer record update failed:", upsertError);
+      await supabase.from('customers').upsert([customerPayload], { onConflict: 'customer_phone' });
       
       setCart([]);
       await fetchInitialData(); 
@@ -170,44 +166,25 @@ const App: React.FC = () => {
   const syncCustomersFromOrders = async () => {
     if (!isSupabaseConfigured || !supabase) return;
     try {
-      // 1. Fetch all orders
       const { data: allOrders, error: orderErr } = await supabase.from('orders').select('*');
       if (orderErr) throw orderErr;
-      if (!allOrders || allOrders.length === 0) {
-        alert('সিঙ্ক করার জন্য কোনো অর্ডার পাওয়া যায়নি।');
-        return;
-      }
+      if (!allOrders || allOrders.length === 0) return;
 
-      // 2. Recalculate customer totals
       const customerMap = new Map();
       allOrders.forEach(order => {
         const phone = order.customer_phone;
         const current = customerMap.get(phone) || { 
-          customer_phone: phone, 
-          customer_name: order.customer_name, 
-          total_orders: 0, 
-          total_spent: 0 
+          customer_phone: phone, customer_name: order.customer_name, total_orders: 0, total_spent: 0 
         };
-        
         current.total_orders += 1;
         current.total_spent += Number(order.total_price);
         customerMap.set(phone, current);
       });
 
-      // 3. Upsert to Supabase
       const customerPayloads = Array.from(customerMap.values());
-      const { error: upsertErr } = await supabase
-        .from('customers')
-        .upsert(customerPayloads, { onConflict: 'customer_phone' });
-      
-      if (upsertErr) throw upsertErr;
-      
+      await supabase.from('customers').upsert(customerPayloads, { onConflict: 'customer_phone' });
       await fetchInitialData();
-      alert('সফলভাবে গ্রাহক ডাটা সিঙ্ক হয়েছে!');
-    } catch (err: any) {
-      console.error(err);
-      alert('সিঙ্ক করতে সমস্যা হয়েছে: ' + (err.message || 'Unknown error'));
-    }
+    } catch (err) { console.error(err); }
   };
 
   const addToCart = (product: Product) => {
@@ -220,9 +197,15 @@ const App: React.FC = () => {
   };
 
   const openProductDetail = (id: string) => {
+    setPrevPage(currentPage);
     setSelectedProductId(id);
     setCurrentPage('product-detail');
     window.scrollTo(0, 0);
+  };
+
+  const closeProductDetail = () => {
+    setCurrentPage(prevPage);
+    setSelectedProductId(null);
   };
 
   const handleUpdateSetting = async (key: string, value: string) => {
@@ -230,9 +213,7 @@ const App: React.FC = () => {
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.from('site_settings').upsert([{ key, value }], { onConflict: 'key' });
-      } catch (err) {
-        console.error("Failed to update setting:", err);
-      }
+      } catch (err) { console.error(err); }
     }
   };
 
@@ -244,7 +225,7 @@ const App: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-[#FDFDFD]">
       {!isAdminMode && (
         <Navbar 
-          onNavigate={(p) => { setCurrentPage(p as Page); setSelectedProductId(null); }} 
+          onNavigate={(p) => { setPrevPage(currentPage); setCurrentPage(p as Page); setSelectedProductId(null); }} 
           currentPage={currentPage} 
           cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)} 
           wishlistCount={wishlist.length} 
@@ -292,7 +273,9 @@ const App: React.FC = () => {
             product={products.find(p => p.id === selectedProductId)!} allProducts={products} 
             onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
             isWishlisted={wishlist.some(p => p.id === selectedProductId)} 
-            onProductClick={openProductDetail} wishlist={wishlist} whatsappNumber={settings.whatsapp_number} 
+            onProductClick={openProductDetail} 
+            onClose={closeProductDetail}
+            wishlist={wishlist} whatsappNumber={settings.whatsapp_number} 
           />
         )}
       </main>
@@ -304,6 +287,7 @@ const App: React.FC = () => {
         onCheckout={createOrder} 
       />
       <WishlistSidebar isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} items={wishlist} onAddToCart={addToCart} onRemove={(p) => setWishlist(prev => prev.filter(it => it.id !== p.id))} />
+      <FloatingWhatsApp phoneNumber={settings.whatsapp_number} />
     </div>
   );
 };

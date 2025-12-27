@@ -28,6 +28,14 @@ export const Home: React.FC<HomeProps> = ({
   );
 
   const isInWishlist = (id: string) => wishlist.some(p => p.id === id);
+  const uniqueCategories = Array.from(new Set(products.map(p => p.category)));
+
+  const exploreCategories = [
+    { name: 'মধু ও তেল', icon: '🛍️' },
+    { name: 'শুকনো খাবার', icon: '🛍️' },
+    { name: 'মশলা ও গুড়', icon: '🛍️' },
+    { name: 'ফল ও সবজি', icon: '🛍️' }
+  ];
 
   return (
     <div className="space-y-0 pb-16">
@@ -64,21 +72,78 @@ export const Home: React.FC<HomeProps> = ({
       </section>
 
       <div className="max-w-7xl mx-auto px-4 mt-16 space-y-24">
-         <ProductSection title="জনপ্রিয় পণ্যসমূহ" subtitle="Popular Choice" products={filteredProducts.slice(0, 4)} onAddToCart={onAddToCart} onToggleWishlist={onToggleWishlist} onProductClick={onProductClick} isInWishlist={isInWishlist} onSeeMore={onShopNow} whatsappNumber={whatsappNumber} />
-         <ProductSection title="বেস্ট সেলিং" subtitle="Best Selling" products={filteredProducts.slice(1, 5)} onAddToCart={onAddToCart} onToggleWishlist={onToggleWishlist} onProductClick={onProductClick} isInWishlist={isInWishlist} onSeeMore={onShopNow} whatsappNumber={whatsappNumber} />
+         <ProductSection title="জনপ্রিয় পণ্যসমূহ" subtitle="Popular Choice" products={filteredProducts.slice(0, 4)} onAddToCart={onAddToCart} onToggleWishlist={onToggleWishlist} onProductClick={onProductClick} isInWishlist={isInWishlist} onSeeMore={onShopNow} />
+         <ProductSection title="বেস্ট সেলিং" subtitle="Best Selling" products={filteredProducts.slice(4, 8)} onAddToCart={onAddToCart} onToggleWishlist={onToggleWishlist} onProductClick={onProductClick} isInWishlist={isInWishlist} onSeeMore={onShopNow} />
+
+         <div className="pt-8 border-t border-slate-100">
+            <div className="text-center mb-16">
+               <h2 className="text-3xl font-black text-slate-800 mb-2">ক্যাটাগরি অনুযায়ী দেখুন</h2>
+               <div className="w-20 h-1 bg-green-600 mx-auto rounded-full"></div>
+            </div>
+            
+            <div className="space-y-24">
+               {uniqueCategories.map((cat) => {
+                 const catProducts = filteredProducts.filter(p => p.category === cat).slice(0, 4);
+                 if (catProducts.length === 0) return null;
+                 return (
+                   <ProductSection 
+                    key={cat}
+                    title={cat} 
+                    subtitle="Explore Items" 
+                    products={catProducts} 
+                    onAddToCart={onAddToCart} 
+                    onToggleWishlist={onToggleWishlist} 
+                    onProductClick={onProductClick} 
+                    isInWishlist={isInWishlist} 
+                    onSeeMore={onShopNow} 
+                   />
+                 );
+               })}
+            </div>
+         </div>
+
+         {/* Explore Categories Section */}
+         <section className="pt-16 pb-24">
+            <div className="mb-12">
+               <span className="text-green-600 font-black text-xs uppercase tracking-[0.3em] block mb-2">EXPLORE CATEGORIES</span>
+               <h2 className="text-4xl font-black text-slate-900">অন্যান্য ক্যাটাগরি</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+               {exploreCategories.map((cat) => (
+                  <div key={cat.name} className="bg-white border border-slate-100 rounded-[2rem] p-8 text-center hover:shadow-xl transition-all group cursor-pointer">
+                     <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                        <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                           <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                     </div>
+                     <h4 className="font-black text-slate-800 text-lg">{cat.name}</h4>
+                  </div>
+               ))}
+            </div>
+         </section>
       </div>
     </div>
   );
 };
 
-const ProductSection = ({ title, subtitle, products, onAddToCart, onToggleWishlist, onProductClick, isInWishlist, onSeeMore, whatsappNumber }: any) => (
-  <section>
+const ProductSection = ({ title, subtitle, products, onAddToCart, onToggleWishlist, onProductClick, isInWishlist, onSeeMore }: any) => (
+  <section className="scroll-mt-24">
     <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-      <div><div className="text-green-600 font-black text-xs uppercase tracking-[0.3em] mb-2">{subtitle}</div><h2 className="text-4xl font-black text-slate-800">{title}</h2></div>
-      <button onClick={onSeeMore} className="group text-green-700 font-black text-lg hover:text-green-800 flex items-center gap-2">সব দেখুন <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 group-hover:translate-x-1 transition-transform" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg></button>
+      <div>
+        <div className="text-green-600 font-black text-xs uppercase tracking-[0.3em] mb-2">{subtitle}</div>
+        <h2 className="text-4xl font-black text-slate-800">{title}</h2>
+      </div>
+      <button onClick={onSeeMore} className="group text-green-700 font-black text-lg hover:text-green-800 flex items-center gap-2">
+        সব দেখুন 
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 group-hover:translate-x-1 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+        </svg>
+      </button>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-      {products.map((p: any) => <ProductCard key={p.id} product={p} onAddToCart={onAddToCart} onToggleWishlist={onToggleWishlist} onProductClick={onProductClick} isWishlisted={isInWishlist(p.id)} />)}
+      {products.map((p: any) => (
+        <ProductCard key={p.id} product={p} onAddToCart={onAddToCart} onToggleWishlist={onToggleWishlist} onProductClick={onProductClick} isWishlisted={isInWishlist(p.id)} />
+      ))}
     </div>
   </section>
 );

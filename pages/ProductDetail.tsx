@@ -10,6 +10,7 @@ interface ProductDetailProps {
   onAddToCart: (p: Product) => void;
   onToggleWishlist: (p: Product) => void;
   onProductClick: (id: string) => void;
+  onClose: () => void;
   isWishlisted: boolean;
   wishlist: Product[];
   whatsappNumber: string;
@@ -21,13 +22,13 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
   onAddToCart, 
   onToggleWishlist, 
   onProductClick,
+  onClose,
   isWishlisted,
   wishlist,
   whatsappNumber
 }) => {
   const handlePayraOrder = () => {
     const message = `হ্যালো ফ্রেশ প্যাভিলিয়ন, আমি পায়রার মাধ্যমে এই পণ্যটি অর্ডার করতে চাই: ${product.name} (৳${product.price})`;
-    /* Fixed: Use the whatsappNumber prop instead of hardcoded value */
     window.open(`https://wa.me/88${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
@@ -46,7 +47,18 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
   const isInWishlist = (id: string) => wishlist.some(p => p.id === id);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12 animate-fade-in font-['Hind_Siliguri']">
+    <div className="max-w-7xl mx-auto px-4 py-12 animate-fade-in font-['Hind_Siliguri'] relative">
+      {/* Close Button */}
+      <button 
+        onClick={onClose}
+        className="absolute top-0 right-4 p-3 bg-white border border-slate-100 rounded-full shadow-lg hover:bg-slate-50 transition-all z-50 text-slate-400 hover:text-slate-800"
+        title="বন্ধ করুন"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 bg-white p-6 md:p-10 rounded-[2.5rem] shadow-xl border border-slate-50 mb-16">
         <div className="relative group">
           <div className="aspect-square rounded-[2rem] overflow-hidden shadow-2xl bg-slate-100">

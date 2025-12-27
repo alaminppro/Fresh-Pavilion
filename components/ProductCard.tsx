@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Product } from '../types';
 import { COLORS, FALLBACK_IMAGE } from '../constants';
@@ -20,8 +21,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const handlePayraOrder = (e: React.MouseEvent) => {
     e.stopPropagation();
     const message = `হ্যালো ফ্রেশ প্যাভিলিয়ন, আমি পায়রার মাধ্যমে এই পণ্যটি অর্ডার করতে চাই: ${product.name} (৳${product.price})`;
-    // Updated WhatsApp number for Payra
-    window.open(`https://wa.me/8801400065088?text=${encodeURIComponent(message)}`, '_blank');
+    // Updated WhatsApp number for Payra support
+    window.open(`https://wa.me/8801630145305?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {

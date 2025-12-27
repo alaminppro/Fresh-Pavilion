@@ -1,17 +1,18 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 /**
- * PRODUCTION SETUP FOR NETLIFY:
- * 1. Go to Netlify Dashboard > Site Settings > Environment Variables.
+ * PRODUCTION SETUP FOR VERCEL/NETLIFY:
+ * 1. Go to Project Settings > Environment Variables.
  * 2. Add: VITE_SUPABASE_URL
  * 3. Add: VITE_SUPABASE_ANON_KEY
+ * 4. Redeploy the project.
  */
 
 // Helper to safely get environment variables in a Vite context
 const getEnvVar = (key: string): string | undefined => {
   try {
     // Vite's environment variables are available on import.meta.env
-    // We use a type cast to 'any' to avoid TS errors during the build-up phase
     const env = (import.meta as any).env;
     return env ? env[key] : undefined;
   } catch (e) {

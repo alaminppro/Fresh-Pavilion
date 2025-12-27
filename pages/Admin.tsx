@@ -11,6 +11,7 @@ interface AdminProps {
   orders: Order[];
   categories: string[];
   staff: AdminUser[];
+  customers: any[];
   onAddProduct: (p: Omit<Product, 'id'>) => void;
   onDeleteProduct: (id: string) => void;
   onUpdateProduct: (p: Product) => void;
@@ -21,14 +22,17 @@ interface AdminProps {
   onUpdateOrderStatus: (id: string, status: Order['status']) => void;
   onSeedDatabase: () => void;
   onBackToSite: () => void;
+  settings: any;
+  onUpdateSetting: (key: string, value: string) => void;
 }
 
 export const Admin: React.FC<AdminProps> = ({ 
-  products, orders, categories, staff,
+  products, orders, categories, staff, customers,
   onAddProduct, onDeleteProduct, onUpdateProduct,
   onAddCategory, onDeleteCategory, 
   onAddStaff, onDeleteStaff,
-  onUpdateOrderStatus, onSeedDatabase, onBackToSite
+  onUpdateOrderStatus, onSeedDatabase, onBackToSite,
+  settings, onUpdateSetting
 }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
@@ -46,6 +50,8 @@ export const Admin: React.FC<AdminProps> = ({
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const heroInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const session = sessionStorage.getItem('fp_admin_session');
@@ -57,7 +63,6 @@ export const Admin: React.FC<AdminProps> = ({
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Use standard check for Master Admin, or logic to check staff array
     const masterAdmin = (usernameInput === 'admin' && passwordInput === '1234');
     const staffMatch = staff.find(s => s.username === usernameInput && s.password === passwordInput);
     
@@ -75,46 +80,36 @@ export const Admin: React.FC<AdminProps> = ({
 
   const handleLogout = () => { setIsLoggedIn(false); sessionStorage.removeItem('fp_admin_session'); };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, target: 'product' | 'logo' | 'hero') => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 500 * 1024) { alert('ইমেজ সাইজ ৫০০KB এর নিচে হতে হবে।'); return; }
+      if (file.size > 800 * 1024) { alert('ইমেজ সাইজ ৮০০KB এর নিচে হতে হবে।'); return; }
       const reader = new FileReader();
-      reader.onloadend = () => setFormState(prev => ({ ...prev, image: reader.result as string }));
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        if (target === 'product') setFormState(prev => ({ ...prev, image: result }));
+        else if (target === 'logo') onUpdateSetting('logo', result);
+        else if (target === 'hero') onUpdateSetting('hero_image', result);
+      };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleOpenProductModal = (p?: Product) => {
-    if (p) { setEditingProduct(p); setFormState({ ...p }); } 
-    else { setEditingProduct(null); setFormState({ name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি' }); }
-    setShowProductModal(true);
+  const downloadCSV = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => 
+      Object.values(row).map(val => `"${val}"`).join(',')
+    ).join('\n');
+    const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + rows;
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `${filename}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
-
-  const handleSaveProduct = () => {
-    if (!formState.name || formState.price <= 0 || !formState.image) { alert('সঠিক তথ্য ও ছবি দিন'); return; }
-    editingProduct ? onUpdateProduct({ ...formState, id: editingProduct.id }) : onAddProduct(formState);
-    setShowProductModal(false);
-  };
-
-  const handleAddStaffInternal = () => {
-    if (!newStaff.username || !newStaff.password) { alert('ইউজারনেম ও পাসওয়ার্ড দিন'); return; }
-    onAddStaff(newStaff);
-    setShowStaffModal(false);
-    setNewStaff({ username: '', password: '', phone: '', role: 'staff' });
-  };
-
-  const clearCache = () => {
-    localStorage.removeItem('fp_products');
-    localStorage.removeItem('fp_orders');
-    alert("ব্রাউজার ক্যাশ পরিষ্কার করা হয়েছে। পেজ রিফ্রেশ করুন।");
-    window.location.reload();
-  };
-
-  const customers = Array.from(new Set(orders.map(o => o.customerPhone))).map(phone => {
-    const customerOrders = orders.filter(o => o.customerPhone === phone);
-    return { phone, name: customerOrders[0].customerName, orderCount: customerOrders.length, totalSpent: customerOrders.reduce((sum, o) => sum + o.totalPrice, 0), lastOrder: customerOrders[customerOrders.length - 1].date };
-  });
 
   if (!isLoggedIn) {
     return (
@@ -129,7 +124,7 @@ export const Admin: React.FC<AdminProps> = ({
             <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500" placeholder="পাসওয়ার্ড" />
             <button type="submit" className="w-full py-4 rounded-2xl text-white font-black text-xl shadow-lg bg-[#2E7D32] hover:bg-green-700 transition-all">প্রবেশ করুন</button>
           </form>
-          <div className="mt-8 text-center"><button onClick={onBackToSite} className="text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">ওয়েবসাইটে ফিরে যান</button></div>
+          <div className="mt-8 text-center"><button onClick={onBackToSite} className="text-slate-400 font-bold text-sm">ওয়েবসাইটে ফিরে যান</button></div>
         </div>
       </div>
     );
@@ -137,7 +132,6 @@ export const Admin: React.FC<AdminProps> = ({
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-['Hind_Siliguri']">
-      {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-100 flex flex-col fixed h-full z-40 shadow-xl">
         <div className="p-6 border-b flex items-center gap-3">
           <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center text-white font-black">A</div>
@@ -152,23 +146,22 @@ export const Admin: React.FC<AdminProps> = ({
           ))}
         </nav>
         <div className="p-4 space-y-2">
-          <button onClick={onBackToSite} className="w-full py-3 rounded-xl bg-slate-900 text-white font-black text-xs hover:bg-black transition-colors">🏠 ওয়েবসাইট</button>
-          <button onClick={handleLogout} className="w-full py-3 rounded-xl bg-red-50 text-red-600 font-black text-xs hover:bg-red-100 transition-colors">🚪 লগ আউট</button>
+          <button onClick={onBackToSite} className="w-full py-3 rounded-xl bg-slate-900 text-white font-black text-xs">🏠 ওয়েবসাইট</button>
+          <button onClick={handleLogout} className="w-full py-3 rounded-xl bg-red-50 text-red-600 font-black text-xs">🚪 লগ আউট</button>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-grow ml-64 p-10 overflow-y-auto">
         <header className="mb-10 flex justify-between items-end">
           <div><h1 className="text-4xl font-black text-slate-900 tracking-tight">{activeTab}</h1></div>
-          <div className="text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date().toLocaleDateString('bn-BD', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+          <div className="text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date().toLocaleDateString('bn-BD')}</div>
         </header>
 
         {activeTab === 'Dashboard' && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <StatCard label="মোট পণ্য" val={products.length} icon="📦" color="green" />
             <StatCard label="মোট অর্ডার" val={orders.length} icon="🛍️" color="blue" />
-            <StatCard label="মোট ক্যাটাগরি" val={categories.length} icon="🏷️" color="purple" />
+            <StatCard label="মোট গ্রাহক" val={customers.length} icon="👥" color="purple" />
             <StatCard label="মোট আয়" val={`৳${orders.reduce((s,o)=>s+o.totalPrice, 0)}`} icon="💸" color="orange" />
           </div>
         )}
@@ -177,7 +170,7 @@ export const Admin: React.FC<AdminProps> = ({
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-xl font-black">পণ্য ব্যবস্থাপনা</h2>
-              <button onClick={() => handleOpenProductModal()} className="px-5 py-2.5 bg-green-600 text-white font-black rounded-xl text-sm shadow-md hover:bg-green-700 transition-all">+ নতুন পণ্য</button>
+              <button onClick={() => { setEditingProduct(null); setShowProductModal(true); }} className="px-5 py-2.5 bg-green-600 text-white font-black rounded-xl text-sm shadow-md hover:bg-green-700 transition-all">+ নতুন পণ্য</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map(p => (
@@ -189,7 +182,7 @@ export const Admin: React.FC<AdminProps> = ({
                     <div className="flex justify-between items-center mt-2">
                       <span className="font-black text-green-700">৳{p.price}</span>
                       <div className="flex gap-1">
-                        <button onClick={() => handleOpenProductModal(p)} className="p-1.5 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all">✏️</button>
+                        <button onClick={() => { setEditingProduct(p); setFormState({...p}); setShowProductModal(true); }} className="p-1.5 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all">✏️</button>
                         <button onClick={() => onDeleteProduct(p.id)} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all">🗑️</button>
                       </div>
                     </div>
@@ -200,11 +193,61 @@ export const Admin: React.FC<AdminProps> = ({
           </div>
         )}
 
+        {activeTab === 'Customers' && (
+          <div className="bg-white p-8 rounded-[2rem] shadow-sm">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-black">গ্রাহক তালিকা</h2>
+              <button onClick={() => downloadCSV(customers, 'fp_customers')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs flex items-center gap-2">📥 CSV ডাউনলোড</button>
+            </div>
+            <table className="w-full text-left">
+              <thead><tr className="border-b text-[10px] font-black text-slate-400 uppercase tracking-widest"><th className="pb-4">নাম ও ফোন</th><th className="pb-4">অর্ডার সংখ্যা</th><th className="pb-4">মোট কেনাকাটা</th><th className="pb-4">শেষ লোকেশন</th></tr></thead>
+              <tbody className="divide-y">
+                {customers.map(c => (
+                  <tr key={c.phone} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-4"><div className="font-black text-sm">{c.name || 'Unknown'}</div><div className="text-[10px] text-slate-400 font-bold">{c.phone}</div></td>
+                    <td className="py-4 font-black">{c.total_orders} টি</td>
+                    <td className="py-4 font-black text-green-700">৳{c.total_spent}</td>
+                    <td className="py-4"><span className="px-2 py-0.5 bg-slate-100 rounded text-[9px] font-black text-slate-600">{c.last_location}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'Orders' && (
+          <div className="bg-white p-8 rounded-[2rem] shadow-sm">
+             <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-black">অর্ডার রেকর্ড</h2>
+              <button onClick={() => downloadCSV(orders, 'fp_orders')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs flex items-center gap-2">📥 CSV ডাউনলোড</button>
+            </div>
+            <table className="w-full text-left">
+              <thead><tr className="border-b text-[10px] uppercase font-black text-slate-400"><th className="pb-4">আইডি</th><th className="pb-4">গ্রাহক</th><th className="pb-4">লোকেশন</th><th className="pb-4">টাকা</th><th className="pb-4">অবস্থা</th><th className="pb-4 text-right">আপডেট</th></tr></thead>
+              <tbody className="divide-y">
+                {orders.map(o => (
+                  <tr key={o.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-4 font-black text-sm">{o.id}</td>
+                    <td className="py-4"><div className="font-black text-xs">{o.customerName}</div><div className="text-[10px] text-slate-400">{o.customerPhone}</div></td>
+                    <td className="py-4 text-[10px] font-bold">{o.location}</td>
+                    <td className="py-4 font-black text-green-700">৳{o.totalPrice}</td>
+                    <td className="py-4"><span className={`px-2 py-0.5 rounded text-[8px] font-black ${o.status === 'Delivered' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{o.status}</span></td>
+                    <td className="py-4 text-right">
+                      <select value={o.status} onChange={e => onUpdateOrderStatus(o.id, e.target.value as Order['status'])} className="bg-slate-50 border rounded p-1 text-[10px] font-black">
+                        <option value="Pending">Pending</option><option value="Delivered">Delivered</option><option value="Cancelled">Cancelled</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         {activeTab === 'Categories' && (
           <div className="bg-white p-8 rounded-[2rem] shadow-sm max-w-2xl">
-            <h2 className="text-xl font-black mb-8">ক্যাটাগরি কন্ট্রোল</h2>
+            <h2 className="text-xl font-black mb-8">ক্যাটাগরি ব্যবস্থাপনা</h2>
             <div className="flex gap-3 mb-8">
-              <input type="text" value={newCatName} onChange={e=>setNewCatName(e.target.value)} className="flex-grow bg-slate-50 border border-slate-100 rounded-xl p-4 font-bold outline-none focus:border-green-500" placeholder="নতুন ক্যাটাগরি নাম" />
+              <input type="text" value={newCatName} onChange={e=>setNewCatName(e.target.value)} className="flex-grow bg-slate-50 border border-slate-100 rounded-xl p-4 font-bold outline-none" placeholder="নতুন ক্যাটাগরি" />
               <button onClick={() => { if(newCatName){ onAddCategory(newCatName); setNewCatName(''); } }} className="px-8 py-4 bg-slate-900 text-white font-black rounded-xl">যোগ করুন</button>
             </div>
             <div className="space-y-3">
@@ -218,32 +261,52 @@ export const Admin: React.FC<AdminProps> = ({
           </div>
         )}
 
-        {activeTab === 'Orders' && (
-          <div className="bg-white p-8 rounded-[2rem] shadow-sm overflow-hidden">
-            <table className="w-full text-left">
-              <thead><tr className="border-b text-[10px] uppercase font-black text-slate-400"><th className="pb-4">আইডি</th><th className="pb-4">গ্রাহক</th><th className="pb-4">লোকেশন</th><th className="pb-4">টাকা</th><th className="pb-4">অবস্থা</th><th className="pb-4 text-right">আপডেট</th></tr></thead>
-              <tbody className="divide-y">
-                {orders.map(o => (
-                  <tr key={o.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4 font-black text-sm">{o.id}</td>
-                    <td className="py-4"><div className="font-black text-xs">{o.customerName}</div><div className="text-[10px] text-slate-400">{o.customerPhone}</div></td>
-                    <td className="py-4 text-[10px] font-bold">{o.location}</td>
-                    <td className="py-4 font-black text-green-700">৳{o.totalPrice}</td>
-                    <td className="py-4"><span className={`px-2 py-0.5 rounded text-[8px] font-black ${o.status === 'Delivered' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{o.status}</span></td>
-                    <td className="py-4 text-right">
-                      <select value={o.status} onChange={e => onUpdateOrderStatus(o.id, e.target.value as Order['status'])} className="bg-slate-50 border rounded p-1 text-[10px] font-black outline-none cursor-pointer">
-                        <option value="Pending">Pending</option><option value="Delivered">Delivered</option><option value="Cancelled">Cancelled</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
         {activeTab === 'Settings' && (
           <div className="space-y-10">
+            {/* Branding Section */}
+            <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50">
+               <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-2">🎨 সাইট ব্র্যান্ডিং ও ভিজ্যুয়াল</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">সাইট লোগো (Square)</label>
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border flex items-center justify-center">
+                        {settings.logo ? <img src={settings.logo} className="w-full h-full object-cover" /> : <span className="font-black text-green-600">FP</span>}
+                      </div>
+                      <button onClick={() => logoInputRef.current?.click()} className="flex-grow py-4 border-2 border-dashed rounded-xl font-black text-slate-400 hover:border-green-400 hover:text-green-500 transition-all text-xs">লোগো পরিবর্তন করুন</button>
+                      <input type="file" ref={logoInputRef} hidden accept="image/*" onChange={(e) => handleImageUpload(e, 'logo')} />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">হিরো ব্যানার ইমেজ (Landing Page)</label>
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border">
+                        <img src={settings.hero_image} className="w-full h-full object-cover" />
+                      </div>
+                      <button onClick={() => heroInputRef.current?.click()} className="flex-grow py-4 border-2 border-dashed rounded-xl font-black text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all text-xs">ব্যানার পরিবর্তন করুন</button>
+                      <input type="file" ref={heroInputRef} hidden accept="image/*" onChange={(e) => handleImageUpload(e, 'hero')} />
+                    </div>
+                  </div>
+                  <div className="col-span-1 md:col-span-2 space-y-4">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">সাইট সেটিংস</label>
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-bold text-slate-500">সাইটের নাম</span>
+                          <input type="text" value={settings.site_name} onChange={e => onUpdateSetting('site_name', e.target.value)} className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500" />
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-bold text-slate-500">পায়রা হোয়াটসঅ্যাপ নম্বর</span>
+                          <input type="text" value={settings.whatsapp_number} onChange={e => onUpdateSetting('whatsapp_number', e.target.value)} className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500" />
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-bold text-slate-500">সাপোর্ট ফোন নম্বর</span>
+                          <input type="text" value={settings.support_phone} onChange={e => onUpdateSetting('support_phone', e.target.value)} className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500" />
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
             {/* Staff Management Section */}
             <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50">
               <div className="flex justify-between items-center mb-6">
@@ -264,51 +327,22 @@ export const Admin: React.FC<AdminProps> = ({
                       <div className="font-black text-sm">{s.username}</div>
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{s.role === 'staff' ? 'Staff' : 'Sub-Admin'}</div>
                     </div>
-                    <button onClick={() => onDeleteStaff(s.id)} className="text-red-500 hover:text-red-700 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
+                    <button onClick={() => onDeleteStaff(s.id)} className="text-red-500 hover:text-red-700 transition-colors">🗑️</button>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* System Tools Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50">
                 <h3 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-2">🚀 ডাটাবেজ টুলস</h3>
-                <p className="text-slate-500 text-sm mb-6 leading-relaxed font-medium">আপনার ডাটাবেজ যদি খালি থাকে বা রিসেট করতে চান, তবে ডামি প্রোডাক্টগুলো ডাটাবেজে সিড করতে পারেন।</p>
                 <button onClick={onSeedDatabase} className="w-full py-4 rounded-xl bg-blue-600 text-white font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"><span>🌱</span> ডামি ডাটা সিড করুন</button>
               </div>
-
               <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50">
-                <h3 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-2">🧹 সিস্টেম ক্লিনআপ</h3>
-                <p className="text-slate-500 text-sm mb-6 leading-relaxed font-medium">ব্রাউজার ক্যাশ বা লোকাল স্টোরেজে কোনো সমস্যা হলে নিচের বাটনে ক্লিক করে ক্লিন করতে পারেন।</p>
-                <button onClick={clearCache} className="w-full py-4 rounded-xl bg-slate-900 text-white font-black shadow-lg hover:bg-black transition-all flex items-center justify-center gap-2"><span>⚡</span> লোকাল ক্যাশ ক্লিন করুন</button>
-              </div>
-            </div>
-
-            {/* Health Status */}
-            <div className="bg-slate-900 text-white p-8 rounded-[2rem] shadow-2xl">
-              <h3 className="text-xl font-black mb-6 flex items-center gap-2">🛡️ সিস্টেম হেলথ</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div>
-                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Supabase Status</div>
-                  <div className={`text-sm font-black flex items-center gap-2 ${isSupabaseConfigured ? 'text-green-400' : 'text-red-400'}`}>
-                    <div className={`w-2 h-2 rounded-full animate-pulse ${isSupabaseConfigured ? 'bg-green-400' : 'bg-red-400'}`} />
-                    {isSupabaseConfigured ? 'Connected' : 'Disconnected'}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Products Sync</div>
-                  <div className="text-sm font-black text-blue-400">{products.length} Items Live</div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Last Backup</div>
-                  <div className="text-sm font-black text-slate-300">Auto (Realtime)</div>
-                </div>
-                <div>
-                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Admin Session</div>
-                  <div className="text-sm font-black text-orange-400">Active (Secure)</div>
+                <h3 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-2">🛡️ সিস্টেম হেলথ</h3>
+                <div className="space-y-2">
+                   <div className="flex justify-between text-xs font-bold"><span className="text-slate-400">Database:</span> <span className={isSupabaseConfigured ? 'text-green-500' : 'text-red-500'}>{isSupabaseConfigured ? 'Connected' : 'Disconnected'}</span></div>
+                   <div className="flex justify-between text-xs font-bold"><span className="text-slate-400">Products Sync:</span> <span className="text-blue-500">{products.length} Items</span></div>
                 </div>
               </div>
             </div>
@@ -323,25 +357,16 @@ export const Admin: React.FC<AdminProps> = ({
           <div className="relative bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl">
             <h3 className="text-2xl font-black mb-8">নতুন স্টাফ যোগ করুন</h3>
             <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ইউজারনেম</label>
-                <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1" value={newStaff.username} onChange={e=>setNewStaff({...newStaff, username: e.target.value})} placeholder="যেমন: staff_01" />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">পাসওয়ার্ড</label>
-                <input type="password" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1" value={newStaff.password} onChange={e=>setNewStaff({...newStaff, password: e.target.value})} placeholder="পাসওয়ার্ড দিন" />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">রোল (Role)</label>
-                <select className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1 cursor-pointer" value={newStaff.role} onChange={e=>setNewStaff({...newStaff, role: e.target.value as 'staff' | 'admin'})}>
-                  <option value="staff">স্টাফ (Staff)</option>
-                  <option value="admin">সাব-অ্যাডমিন (Sub-Admin)</option>
-                </select>
-              </div>
+              <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none" value={newStaff.username} onChange={e=>setNewStaff({...newStaff, username: e.target.value})} placeholder="ইউজারনেম" />
+              <input type="password" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none" value={newStaff.password} onChange={e=>setNewStaff({...newStaff, password: e.target.value})} placeholder="পাসওয়ার্ড" />
+              <select className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none cursor-pointer" value={newStaff.role} onChange={e=>setNewStaff({...newStaff, role: e.target.value as 'staff' | 'admin'})}>
+                <option value="staff">স্টাফ (Staff)</option>
+                <option value="admin">সাব-অ্যাডমিন (Sub-Admin)</option>
+              </select>
             </div>
             <div className="mt-8 flex gap-4">
               <button onClick={() => setShowStaffModal(false)} className="flex-grow py-4 rounded-xl bg-slate-100 font-black text-slate-500">বাতিল</button>
-              <button onClick={handleAddStaffInternal} className="flex-grow py-4 rounded-xl bg-blue-600 text-white font-black">যোগ করুন</button>
+              <button onClick={() => { onAddStaff(newStaff); setShowStaffModal(false); }} className="flex-grow py-4 rounded-xl bg-blue-600 text-white font-black">যোগ করুন</button>
             </div>
           </div>
         </div>
@@ -354,32 +379,24 @@ export const Admin: React.FC<AdminProps> = ({
           <div className="relative bg-white w-full max-w-xl rounded-[2.5rem] p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
             <h3 className="text-2xl font-black mb-8 tracking-tighter">{editingProduct ? 'সংশোধন' : 'নতুন পণ্য এন্ট্রি'}</h3>
             <div className="grid grid-cols-2 gap-5">
-              <div className="col-span-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">পণ্যের নাম</label>
-                <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none focus:border-green-500 mt-1" value={formState.name} onChange={e=>setFormState({...formState, name: e.target.value})} placeholder="পণ্যের নাম" />
-              </div>
+              <div className="col-span-2"><input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1" value={formState.name} onChange={e=>setFormState({...formState, name: e.target.value})} placeholder="পণ্যের নাম" /></div>
               <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ক্যাটাগরি</label>
                 <select className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none cursor-pointer mt-1" value={formState.category} onChange={e=>setFormState({...formState, category: e.target.value})}>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">মূল্য (৳)</label>
-                <input type="number" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none focus:border-green-500 mt-1" value={formState.price} onChange={e=>setFormState({...formState, price: Number(e.target.value)})} placeholder="৳" />
-              </div>
+              <div><input type="number" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none mt-1" value={formState.price} onChange={e=>setFormState({...formState, price: Number(e.target.value)})} placeholder="মূল্য (৳)" /></div>
               <div className="col-span-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">পণ্যের ছবি</label>
                 <div className="flex items-center gap-4 mt-1">
                   <div className="w-16 h-16 rounded-xl bg-slate-50 overflow-hidden border">{formState.image && <img src={formState.image} className="w-full h-full object-cover" />}</div>
-                  <button onClick={() => fileInputRef.current?.click()} className="flex-grow py-4 border-2 border-dashed rounded-xl font-black text-slate-400 hover:border-green-400 hover:text-green-500 transition-all">ছবি নির্বাচন করুন</button>
-                  <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleImageUpload} />
+                  <button onClick={() => fileInputRef.current?.click()} className="flex-grow py-4 border-2 border-dashed rounded-xl font-black text-slate-400 text-xs">ছবি নির্বাচন করুন</button>
+                  <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e) => handleImageUpload(e, 'product')} />
                 </div>
               </div>
             </div>
             <div className="mt-10 flex gap-4">
-              <button onClick={() => setShowProductModal(false)} className="flex-grow py-4 rounded-xl bg-slate-100 font-black text-slate-500 hover:bg-slate-200 transition-all">বাতিল</button>
-              <button onClick={handleSaveProduct} className="flex-grow py-4 rounded-xl bg-green-600 text-white font-black shadow-lg shadow-green-100 hover:bg-green-700 transition-all">সংরক্ষণ করুন</button>
+              <button onClick={() => setShowProductModal(false)} className="flex-grow py-4 rounded-xl bg-slate-100 font-black text-slate-500">বাতিল</button>
+              <button onClick={() => { editingProduct ? onUpdateProduct({ ...formState, id: editingProduct.id }) : onAddProduct(formState); setShowProductModal(false); }} className="flex-grow py-4 rounded-xl bg-green-600 text-white font-black">সংরক্ষণ করুন</button>
             </div>
           </div>
         </div>

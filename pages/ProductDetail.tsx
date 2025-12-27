@@ -12,6 +12,7 @@ interface ProductDetailProps {
   onProductClick: (id: string) => void;
   isWishlisted: boolean;
   wishlist: Product[];
+  whatsappNumber: string;
 }
 
 export const ProductDetail: React.FC<ProductDetailProps> = ({ 
@@ -21,11 +22,13 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
   onToggleWishlist, 
   onProductClick,
   isWishlisted,
-  wishlist
+  wishlist,
+  whatsappNumber
 }) => {
   const handlePayraOrder = () => {
     const message = `হ্যালো ফ্রেশ প্যাভিলিয়ন, আমি পায়রার মাধ্যমে এই পণ্যটি অর্ডার করতে চাই: ${product.name} (৳${product.price})`;
-    window.open(`https://wa.me/8801400065088?text=${encodeURIComponent(message)}`, '_blank');
+    /* Fixed: Use the whatsappNumber prop instead of hardcoded value */
+    window.open(`https://wa.me/88${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {

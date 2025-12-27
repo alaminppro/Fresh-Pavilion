@@ -629,6 +629,7 @@ export const Admin: React.FC<AdminProps> = ({
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">ইউনিট</label>
+                {/* Fixed typo: changed setStaffForm to setFormState */}
                 <select className="w-full bg-slate-50 border-2 border-slate-50 rounded-xl p-4 font-black text-slate-900 outline-none focus:border-green-500 transition-all" value={formState.unit} onChange={e=>setFormState({...formState, unit: e.target.value})}>
                   {UNIT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                 </select>
@@ -649,7 +650,7 @@ export const Admin: React.FC<AdminProps> = ({
       {/* Staff Modal (User Control) */}
       {showStaffModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur">
-          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl text-slate-900">
+          <div className="bg-white w-full max-md rounded-[2.5rem] p-10 shadow-2xl text-slate-900">
             <h3 className="text-2xl font-black mb-6 tracking-tighter">নতুন স্টাফ যুক্ত করুন</h3>
             <div className="space-y-4">
                <div>

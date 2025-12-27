@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Product } from '../types';
 import { COLORS, FALLBACK_IMAGE } from '../constants';
@@ -28,12 +27,10 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
   whatsappNumber
 }) => {
   const handlePayraOrder = () => {
-    // Clean and format number for international WhatsApp link
-    // Payra specifically uses 8801630145305
-    const targetNumber = '8801630145305';
-
+    // Correct Payra WhatsApp number: +880 1400-065088
+    const payraNumber = '8801400065088';
     const message = `হ্যালো, আমি ফ্রেশ প্যাভিলিয়ন থেকে, পায়রার মাধ্যমে এই পণ্যটি অর্ডার করতে চাই: ${product.name}`;
-    window.open(`https://wa.me/${targetNumber}?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/${payraNumber}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {

@@ -75,8 +75,17 @@ const App: React.FC = () => {
         supabase.from('customers').select('*').order('total_spent', { ascending: false })
       ]);
       
-      if (dbProducts && dbProducts.length > 0) setProducts(dbProducts as Product[]);
-      else setProducts(INITIAL_PRODUCTS as Product[]);
+      if (dbProducts && dbProducts.length > 0) {
+        const mappedProducts: Product[] = dbProducts.map((p: any) => ({
+          ...p,
+          isFeatured: p.is_featured,
+          isBestSelling: p.is_bestselling,
+          isNew: p.is_new
+        }));
+        setProducts(mappedProducts);
+      } else {
+        setProducts(INITIAL_PRODUCTS as Product[]);
+      }
       
       if (dbOrders) {
         const mappedOrders: Order[] = dbOrders.map((o: any) => ({
@@ -109,6 +118,39 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAddProduct = async (p: Omit<Product, 'id'>) => {
+    if (!supabase) return;
+    const payload = {
+      ...p,
+      is_featured: p.isFeatured,
+      is_bestselling: p.isBestSelling,
+      is_new: p.isNew
+    };
+    // Remove client-side only camelCase props before sending to DB
+    delete (payload as any).isFeatured;
+    delete (payload as any).isBestSelling;
+    delete (payload as any).isNew;
+
+    const { data } = await supabase.from('products').insert([payload]).select();
+    if (data) fetchInitialData();
+  };
+
+  const handleUpdateProduct = async (p: Product) => {
+    if (!supabase) return;
+    const payload = {
+      ...p,
+      is_featured: p.isFeatured,
+      is_bestselling: p.isBestSelling,
+      is_new: p.isNew
+    };
+    delete (payload as any).isFeatured;
+    delete (payload as any).isBestSelling;
+    delete (payload as any).isNew;
+
+    await supabase.from('products').update(payload).eq('id', p.id);
+    fetchInitialData();
   };
 
   const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'status'>): Promise<boolean> => {
@@ -242,6 +284,7 @@ const App: React.FC = () => {
             onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
             onProductClick={openProductDetail} 
             heroImage={settings.hero_image} siteName={settings.site_name} whatsappNumber={settings.whatsapp_number}
+            categories={categories}
           />
         )}
         {currentPage === 'shop' && (
@@ -256,14 +299,14 @@ const App: React.FC = () => {
         {currentPage === 'admin' && (
           <Admin 
             products={products} orders={orders} categories={categories} staff={staff} customers={customers}
-            onAddProduct={async (p) => { if (supabase) { const { data } = await supabase.from('products').insert([p]).select(); if (data) setProducts([data[0], ...products]); } }}
-            onDeleteProduct={async (id) => { if (supabase) await supabase.from('products').delete().eq('id', id); setProducts(products.filter(p => p.id !== id)); }} 
-            onUpdateProduct={async (p) => { if (supabase) await supabase.from('products').update(p).eq('id', p.id); setProducts(products.map(pr => pr.id === p.id ? p : pr)); }} 
-            onAddCategory={async (name) => { if (supabase) await supabase.from('categories').insert([{ name }]); setCategories([...categories, name]); }}
-            onDeleteCategory={async (name) => { if (supabase) await supabase.from('categories').delete().eq('name', name); setCategories(categories.filter(c => c !== name)); }}
-            onAddStaff={async (s) => { if (supabase) { const { data } = await supabase.from('admin_users').insert([s]).select(); if (data) setStaff([...staff, data[0]]); } }}
-            onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); setStaff(staff.filter(s => s.id !== id)); }}
-            onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); setOrders(orders.map(o => o.id === id ? { ...o, status } : o)); }}
+            onAddProduct={handleAddProduct}
+            onDeleteProduct={async (id) => { if (supabase) await supabase.from('products').delete().eq('id', id); fetchInitialData(); }} 
+            onUpdateProduct={handleUpdateProduct} 
+            onAddCategory={async (name) => { if (supabase) await supabase.from('categories').insert([{ name }]); fetchInitialData(); }}
+            onDeleteCategory={async (name) => { if (supabase) await supabase.from('categories').delete().eq('name', name); fetchInitialData(); }}
+            onAddStaff={async (s) => { if (supabase) { await supabase.from('admin_users').insert([s]); fetchInitialData(); } }}
+            onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); fetchInitialData(); }}
+            onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); fetchInitialData(); }}
             onSeedDatabase={fetchInitialData}
             onSyncCustomers={syncCustomersFromOrders}
             onBackToSite={() => setCurrentPage('home')} 

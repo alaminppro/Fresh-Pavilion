@@ -50,7 +50,8 @@ export const Admin: React.FC<AdminProps> = ({
   const [isSyncing, setIsSyncing] = useState(false);
 
   const [formState, setFormState] = useState<Omit<Product, 'id'>>({
-    name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি'
+    name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি',
+    isFeatured: false, isBestSelling: false, isNew: false
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -192,7 +193,7 @@ export const Admin: React.FC<AdminProps> = ({
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-xl font-black">পণ্য ব্যবস্থাপনা</h2>
-              <button onClick={() => { setEditingProduct(null); setFormState({name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি'}); setShowProductModal(true); }} className="px-5 py-2.5 bg-green-600 text-white font-black rounded-xl text-sm shadow-md hover:bg-green-700 transition-all">+ নতুন পণ্য</button>
+              <button onClick={() => { setEditingProduct(null); setFormState({name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি', isFeatured: false, isBestSelling: false, isNew: false }); setShowProductModal(true); }} className="px-5 py-2.5 bg-green-600 text-white font-black rounded-xl text-sm shadow-md hover:bg-green-700 transition-all">+ নতুন পণ্য</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map(p => (
@@ -201,11 +202,16 @@ export const Admin: React.FC<AdminProps> = ({
                   <div className="flex-grow overflow-hidden">
                     <h4 className="font-black text-sm truncate text-slate-800">{p.name}</h4>
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{p.category}</span>
+                    <div className="flex gap-1 mt-1">
+                       {p.isFeatured && <span className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-[7px] font-black uppercase">Featured</span>}
+                       {p.isBestSelling && <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[7px] font-black uppercase">Best Selling</span>}
+                       {p.isNew && <span className="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[7px] font-black uppercase">New</span>}
+                    </div>
                     <div className="flex justify-between items-center mt-2">
                       <span className="font-black text-green-700">৳{p.price}</span>
                       <div className="flex gap-1">
                         <button onClick={() => { setEditingProduct(p); setFormState({...p}); setShowProductModal(true); }} className="p-1.5 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all">✏️</button>
-                        <button onClick={() => onDeleteProduct(p.id)} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all">🗑️</button>
+                        <button onClick={() => { if(window.confirm('নিশ্চিত?')) onDeleteProduct(p.id); }} className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all">🗑️</button>
                       </div>
                     </div>
                   </div>
@@ -216,6 +222,7 @@ export const Admin: React.FC<AdminProps> = ({
           </div>
         )}
 
+        {/* Other tabs remain unchanged... */}
         {activeTab === 'Customers' && (
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -416,6 +423,26 @@ export const Admin: React.FC<AdminProps> = ({
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">বিস্তারিত বিবরণ (Description)</label>
                 <textarea className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500 h-32 resize-none" value={formState.longDescription} onChange={e=>setFormState({...formState, longDescription: e.target.value})} placeholder="পণ্যের গুণাগুণ ও বিস্তারিত এখানে লিখুন..." />
               </div>
+
+              {/* Tag Selection Controls */}
+              <div className="col-span-2 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4 block">হোমপেজ ফিচার (Home Sections Control)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                   <button onClick={() => setFormState({...formState, isFeatured: !formState.isFeatured})} className={`p-4 rounded-xl font-black text-xs transition-all border-2 flex items-center justify-between ${formState.isFeatured ? 'bg-green-600 border-green-600 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-400'}`}>
+                     <span>🔥 জনপ্রিয় পণ্য</span>
+                     <span className={`w-4 h-4 rounded-full border-2 ${formState.isFeatured ? 'bg-white border-white' : 'border-slate-300'}`}></span>
+                   </button>
+                   <button onClick={() => setFormState({...formState, isBestSelling: !formState.isBestSelling})} className={`p-4 rounded-xl font-black text-xs transition-all border-2 flex items-center justify-between ${formState.isBestSelling ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-400'}`}>
+                     <span>📈 বেস্ট সেলিং</span>
+                     <span className={`w-4 h-4 rounded-full border-2 ${formState.isBestSelling ? 'bg-white border-white' : 'border-slate-300'}`}></span>
+                   </button>
+                   <button onClick={() => setFormState({...formState, isNew: !formState.isNew})} className={`p-4 rounded-xl font-black text-xs transition-all border-2 flex items-center justify-between ${formState.isNew ? 'bg-orange-500 border-orange-500 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-400'}`}>
+                     <span>✨ নতুন পণ্য</span>
+                     <span className={`w-4 h-4 rounded-full border-2 ${formState.isNew ? 'bg-white border-white' : 'border-slate-300'}`}></span>
+                   </button>
+                </div>
+              </div>
+
               <div className="col-span-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">পণ্যের ছবি (URL অথবা আপলোড)</label>
                 <div className="space-y-3">

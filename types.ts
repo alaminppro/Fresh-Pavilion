@@ -15,7 +15,7 @@ export interface Product {
   image: string;
   category: string;
   stock: number;
-  unit: string; // e.g., 'টি', 'কেজি', 'গ্রাম', 'মিলি', 'লিটার'
+  unit: string;
 }
 
 export interface CartItem extends Product {
@@ -30,12 +30,12 @@ export interface Order {
   items: CartItem[];
   totalPrice: number;
   status: 'Pending' | 'Delivered' | 'Cancelled';
-  date: string;
+  created_at: string;
 }
 
 export interface AdminUser {
   id: string;
-  username: string; // email for sub-admins
+  username: string;
   phone: string;
   password: string;
   role: 'admin' | 'staff';

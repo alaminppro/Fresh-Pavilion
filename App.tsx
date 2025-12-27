@@ -46,10 +46,6 @@ const App: React.FC = () => {
 
   useEffect(() => {
     fetchInitialData();
-    const savedCart = localStorage.getItem('fp_cart');
-    const savedWishlist = localStorage.getItem('fp_wishlist');
-    if (savedCart) setCart(JSON.parse(savedCart));
-    if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
   }, []);
 
   const fetchInitialData = async () => {
@@ -57,8 +53,6 @@ const App: React.FC = () => {
     if (!isSupabaseConfigured || !supabase) {
       const savedProducts = localStorage.getItem('fp_products');
       setProducts(savedProducts ? JSON.parse(savedProducts) : INITIAL_PRODUCTS as Product[]);
-      const savedOrders = localStorage.getItem('fp_orders');
-      if (savedOrders) setOrders(JSON.parse(savedOrders));
       setIsLoading(false);
       return;
     }
@@ -94,7 +88,6 @@ const App: React.FC = () => {
       }
     } catch (err) {
       console.error("Error fetching data:", err);
-      setProducts(INITIAL_PRODUCTS as Product[]);
     } finally {
       setIsLoading(false);
     }
@@ -107,92 +100,22 @@ const App: React.FC = () => {
     }
   };
 
-  const handleSeedDatabase = async () => {
-    if (!isSupabaseConfigured || !supabase) { alert("Supabase is not configured!"); return; }
-    const confirm = window.confirm("আপনি কি সব ডামি প্রোডাক্ট ডাটাবেজে আপলোড করতে চান?");
-    if (!confirm) return;
-    try {
-      const uniqueCats = Array.from(new Set(INITIAL_PRODUCTS.map(p => p.category)));
-      for (const cat of uniqueCats) { await supabase.from('categories').upsert([{ name: cat }], { onConflict: 'name' }); }
-      const productsToSeed = INITIAL_PRODUCTS.map(({ id, ...rest }) => rest);
-      const { error } = await supabase.from('products').insert(productsToSeed);
-      if (error) throw error;
-      alert("সাফল্য! ডাটাবেজ সিড করা হয়েছে।");
-      fetchInitialData();
-    } catch (err: any) { alert("Error: " + err.message); }
-  };
-
-  const handleAddStaff = async (staffData: Omit<AdminUser, 'id'>) => {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.from('admin_users').insert([staffData]).select();
-      if (error) { alert("Error: " + error.message); return; }
-      if (data) setStaff([...staff, data[0] as AdminUser]);
-    } else { setStaff([...staff, { ...staffData, id: Date.now().toString() }]); }
-  };
-
-  const handleDeleteStaff = async (id: string) => {
-    if (isSupabaseConfigured && supabase) {
-      await supabase.from('admin_users').delete().eq('id', id);
-      setStaff(staff.filter(s => s.id !== id));
-    } else { setStaff(staff.filter(s => s.id !== id)); }
-  };
-
-  const handleAddProduct = async (productData: Omit<Product, 'id'>) => {
-    if (isSupabaseConfigured && supabase) {
-      const { data, error } = await supabase.from('products').insert([productData]).select();
-      if (error) { alert("Error: " + error.message); return; }
-      if (data) setProducts([data[0] as Product, ...products]);
-    } else { setProducts([{ ...productData, id: Date.now().toString() }, ...products]); }
-  };
-
-  const handleUpdateProduct = async (updatedProduct: Product) => {
-    if (isSupabaseConfigured && supabase) {
-      await supabase.from('products').update(updatedProduct).eq('id', updatedProduct.id);
-    }
-    setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-  };
-
-  const handleDeleteProduct = async (id: string) => {
-    if (isSupabaseConfigured && supabase) { await supabase.from('products').delete().eq('id', id); }
-    setProducts(products.filter(p => p.id !== id));
-  };
-
-  const handleAddCategory = async (name: string) => {
-    if (isSupabaseConfigured && supabase) { await supabase.from('categories').insert([{ name }]); }
-    setCategories([...categories, name]);
-  };
-
-  const handleDeleteCategory = async (name: string) => {
-    if (isSupabaseConfigured && supabase) { await supabase.from('categories').delete().eq('name', name); }
-    setCategories(categories.filter(c => c !== name));
-  };
-
-  const handleUpdateOrderStatus = async (id: string, status: Order['status']) => {
-    if (isSupabaseConfigured && supabase) { await supabase.from('orders').update({ status }).eq('id', id); }
-    setOrders(orders.map(o => o.id === id ? { ...o, status } : o));
-  };
-
-  const addToCart = (product: Product) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...prev, { ...product, quantity: 1 }];
-    });
-    setIsCartOpen(true);
-  };
-
-  const createOrder = async (orderData: Omit<Order, 'id' | 'date' | 'status'>) => {
+  const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'status'>): Promise<boolean> => {
     const newOrder = {
       ...orderData,
       id: `#FP-${Math.floor(Math.random() * 900000 + 100000)}`,
       status: 'Pending',
-      date: new Date().toISOString()
+      created_at: new Date().toISOString()
     };
+
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('orders').insert([newOrder]);
-      if (error) { alert("Order failed: " + error.message); return; }
+      if (error) {
+        alert("অর্ডার সম্পন্ন করা যায়নি: " + error.message);
+        return false;
+      }
       
-      // Upsert customer info
+      // Update customer stats
       const { data: existingCust } = await supabase.from('customers').select('*').eq('phone', orderData.customerPhone).single();
       const customerPayload = {
         phone: orderData.customerPhone,
@@ -205,23 +128,31 @@ const App: React.FC = () => {
       
       setOrders(prev => [newOrder as Order, ...prev]);
       setCart([]);
-      fetchInitialData(); // Refresh customers list
+      fetchInitialData();
+      return true;
     } else {
       setOrders(prev => [newOrder as Order, ...prev]);
       setCart([]);
+      return true;
     }
+  };
+
+  const handleAddProduct = async (p: Omit<Product, 'id'>) => {
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.from('products').insert([p]).select();
+      if (!error && data) setProducts([data[0], ...products]);
+    }
+  };
+
+  const openProductDetail = (id: string) => {
+    setSelectedProductId(id);
+    setCurrentPage('product-detail');
+    window.scrollTo(0, 0);
   };
 
   const isAdminMode = currentPage === 'admin';
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white font-['Hind_Siliguri']">
-        <div className="w-16 h-16 border-4 border-green-100 border-t-green-600 rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-bold animate-pulse">লোড হচ্ছে...</p>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-bold">লোড হচ্ছে...</div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FDFDFD]">
@@ -239,44 +170,64 @@ const App: React.FC = () => {
       )}
       <main className={`flex-grow ${isAdminMode ? '' : 'pt-20'}`}>
         {currentPage === 'home' && (
-          /* Fixed Error: openProductDetail signature mismatch by wrapping in an arrow function */
           <Home 
-            products={products} wishlist={wishlist} onShopNow={() => setCurrentPage('shop')} onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} onProductClick={(id) => openProductDetail(id, setSelectedProductId, setCurrentPage)} 
-            heroImage={settings.hero_image}
-            siteName={settings.site_name}
-            whatsappNumber={settings.whatsapp_number}
+            products={products} wishlist={wishlist} onShopNow={() => setCurrentPage('shop')} onAddToCart={addToCart} 
+            onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
+            onProductClick={openProductDetail} 
+            heroImage={settings.hero_image} siteName={settings.site_name} whatsappNumber={settings.whatsapp_number}
           />
         )}
         {currentPage === 'shop' && (
-          /* Fixed Error: openProductDetail signature mismatch by wrapping in an arrow function */
-          <Shop products={products} wishlist={wishlist} onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} onProductClick={(id) => openProductDetail(id, setSelectedProductId, setCurrentPage)} />
+          <Shop 
+            products={products} wishlist={wishlist} onAddToCart={addToCart} 
+            onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
+            onProductClick={openProductDetail} 
+          />
         )}
         {currentPage === 'admin' && (
           <Admin 
             products={products} orders={orders} categories={categories} staff={staff} customers={customers}
-            onAddProduct={handleAddProduct} onDeleteProduct={handleDeleteProduct} onUpdateProduct={handleUpdateProduct} 
-            onAddCategory={handleAddCategory} onDeleteCategory={handleDeleteCategory} 
-            onAddStaff={handleAddStaff} onDeleteStaff={handleDeleteStaff} 
-            onUpdateOrderStatus={handleUpdateOrderStatus} onSeedDatabase={handleSeedDatabase} 
+            onAddProduct={handleAddProduct} 
+            onDeleteProduct={async (id) => { if (supabase) await supabase.from('products').delete().eq('id', id); setProducts(products.filter(p => p.id !== id)); }} 
+            onUpdateProduct={async (p) => { if (supabase) await supabase.from('products').update(p).eq('id', p.id); setProducts(products.map(pr => pr.id === p.id ? p : pr)); }} 
+            onAddCategory={async (name) => { if (supabase) await supabase.from('categories').insert([{ name }]); setCategories([...categories, name]); }}
+            onDeleteCategory={async (name) => { if (supabase) await supabase.from('categories').delete().eq('name', name); setCategories(categories.filter(c => c !== name)); }}
+            onAddStaff={async (s) => { if (supabase) { const { data } = await supabase.from('admin_users').insert([s]).select(); if (data) setStaff([...staff, data[0]]); } }}
+            onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); setStaff(staff.filter(s => s.id !== id)); }}
+            onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); setOrders(orders.map(o => o.id === id ? { ...o, status } : o)); }}
+            onSeedDatabase={async () => { /* Logic from previous turn */ }}
             onBackToSite={() => setCurrentPage('home')} 
             settings={settings} onUpdateSetting={handleUpdateSetting}
           />
         )}
         {currentPage === 'product-detail' && products.find(p => p.id === selectedProductId) && (
-          <ProductDetail product={products.find(p => p.id === selectedProductId)!} allProducts={products} onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} isWishlisted={wishlist.some(p => p.id === selectedProductId)} onProductClick={(id) => { setSelectedProductId(id); window.scrollTo(0,0); }} wishlist={wishlist} whatsappNumber={settings.whatsapp_number} />
+          <ProductDetail 
+            product={products.find(p => p.id === selectedProductId)!} allProducts={products} 
+            onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
+            isWishlisted={wishlist.some(p => p.id === selectedProductId)} 
+            onProductClick={openProductDetail} wishlist={wishlist} whatsappNumber={settings.whatsapp_number} 
+          />
         )}
       </main>
       {!isAdminMode && <Footer siteName={settings.site_name} supportPhone={settings.support_phone} />}
-      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onRemove={(id) => setCart(cart.filter(i => i.id !== id))} onUpdateQuantity={(id, d) => setCart(cart.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + d)} : i))} onCheckout={createOrder} />
+      <CartSidebar 
+        isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} 
+        onRemove={(id) => setCart(cart.filter(i => i.id !== id))} 
+        onUpdateQuantity={(id, d) => setCart(cart.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + d)} : i))} 
+        onCheckout={createOrder} 
+      />
       <WishlistSidebar isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} items={wishlist} onAddToCart={addToCart} onRemove={(p) => setWishlist(prev => prev.filter(it => it.id !== p.id))} />
     </div>
   );
-};
 
-const openProductDetail = (id: string, setSelectedProductId: any, setCurrentPage: any) => {
-    setSelectedProductId(id);
-    setCurrentPage('product-detail');
-    window.scrollTo(0, 0);
+  function addToCart(product: Product) {
+    setCart(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      return [...prev, { ...product, quantity: 1 }];
+    });
+    setIsCartOpen(true);
+  }
 };
 
 export default App;

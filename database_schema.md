@@ -29,10 +29,10 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- 3. Create Customers Table (CRUCIAL)
+-- 3. Create Customers Table (Corrected based on screenshots)
 CREATE TABLE IF NOT EXISTS customers (
-  phone TEXT PRIMARY KEY, -- Used for identification and deduplication
-  name TEXT NOT NULL,
+  customer_phone TEXT PRIMARY KEY, -- Used for identification and deduplication
+  customer_name TEXT NOT NULL,
   total_orders INTEGER DEFAULT 0,
   total_spent NUMERIC DEFAULT 0,
   last_location TEXT,
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS site_settings (
   value TEXT
 );
 
--- IMPORTANT: Disable RLS for ease of use (or configure proper policies if needed)
+-- IMPORTANT: Disable RLS for ease of use
 ALTER TABLE products DISABLE ROW LEVEL SECURITY;
 ALTER TABLE orders DISABLE ROW LEVEL SECURITY;
 ALTER TABLE customers DISABLE ROW LEVEL SECURITY;

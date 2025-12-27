@@ -137,37 +137,31 @@ const App: React.FC = () => {
 
       if (orderError) throw orderError;
 
-      // 2. Synchronize Customer Information
-      // Try to get existing customer data
-      const { data: existingCust, error: fetchCustError } = await supabase
+      // 2. Synchronize Customer Information using CORRECT COLUMN NAMES
+      const { data: existingCust } = await supabase
         .from('customers')
         .select('*')
-        .eq('phone', orderData.customerPhone)
+        .eq('customer_phone', orderData.customerPhone)
         .maybeSingle();
 
-      if (fetchCustError) console.warn("Failed to check existing customer:", fetchCustError);
-
       const customerPayload = {
-        phone: orderData.customerPhone,
-        name: orderData.customerName,
+        customer_phone: orderData.customerPhone,
+        customer_name: orderData.customerName,
         last_location: orderData.location,
         total_orders: (existingCust?.total_orders || 0) + 1,
         total_spent: (existingCust?.total_spent || 0) + orderData.totalPrice,
         updated_at: now
       };
 
-      // UPSERT will insert if doesn't exist, or update if phone matches
       const { error: upsertError } = await supabase
         .from('customers')
-        .upsert([customerPayload], { onConflict: 'phone' });
+        .upsert([customerPayload], { onConflict: 'customer_phone' });
 
       if (upsertError) {
         console.error("Customer upsert failed:", upsertError);
-        // We don't fail the whole function if customer sync fails, but we log it.
       }
       
       setCart([]);
-      // Crucial: Refresh all data so the Admin panel sees the new order and customer
       await fetchInitialData(); 
       return true;
     } catch (err: any) {

@@ -110,11 +110,9 @@ export const Admin: React.FC<AdminProps> = ({
     for (const row of data) {
       const values = headers.map(header => {
         let val = row[header];
-        // Custom formatting for Items in Orders
         if (header === 'items' && Array.isArray(val)) {
           val = val.map(i => `${i.name} x${i.quantity}`).join(' | ');
         }
-        // Cleanup strings for CSV
         const escaped = ('' + (val ?? '')).replace(/"/g, '""');
         return `"${escaped}"`;
       });
@@ -243,8 +241,8 @@ export const Admin: React.FC<AdminProps> = ({
                 {customers.length === 0 ? (
                   <tr><td colSpan={4} className="py-20 text-center text-slate-400 font-bold">এখনো কোনো গ্রাহক ডাটা তৈরি হয়নি।</td></tr>
                 ) : customers.map(c => (
-                  <tr key={c.phone} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4"><div className="font-black text-sm text-slate-900">{c.name || 'নতুন গ্রাহক'}</div><div className="text-[10px] text-slate-400 font-bold">{c.phone}</div></td>
+                  <tr key={c.customer_phone} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-4"><div className="font-black text-sm text-slate-900">{c.customer_name || 'নতুন গ্রাহক'}</div><div className="text-[10px] text-slate-400 font-bold">{c.customer_phone}</div></td>
                     <td className="py-4 font-black text-slate-700">{c.total_orders} টি</td>
                     <td className="py-4 font-black text-green-700">৳{c.total_spent}</td>
                     <td className="py-4"><span className="px-2 py-0.5 bg-slate-100 rounded text-[9px] font-black text-slate-600">{c.last_location}</span></td>
@@ -307,7 +305,6 @@ export const Admin: React.FC<AdminProps> = ({
 
         {activeTab === 'Settings' && (
           <div className="space-y-10">
-            {/* Branding Section */}
             <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50">
                <h3 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-2">🎨 সাইট ব্র্যান্ডিং ও ভিজ্যুয়াল</h3>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -394,7 +391,6 @@ export const Admin: React.FC<AdminProps> = ({
         )}
       </main>
 
-      {/* Staff Modal */}
       {showStaffModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur" onClick={() => setShowStaffModal(false)} />
@@ -416,7 +412,6 @@ export const Admin: React.FC<AdminProps> = ({
         </div>
       )}
 
-      {/* Product Modal */}
       {showProductModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur" onClick={() => setShowProductModal(false)} />

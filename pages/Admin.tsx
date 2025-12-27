@@ -103,31 +103,31 @@ export const Admin: React.FC<AdminProps> = ({
     const headers = Object.keys(data[0]);
     const csvRows = [];
     
-    // Add Headers
+    // Header Row
     csvRows.push(headers.join(','));
     
-    // Add Data
+    // Data Rows
     for (const row of data) {
       const values = headers.map(header => {
-        const val = row[header];
-        // Special handling for items array in orders
+        let val = row[header];
         if (header === 'items' && Array.isArray(val)) {
-          const itemNames = val.map(i => `${i.name} x${i.quantity}`).join(' | ');
-          return `"${itemNames}"`;
+          val = val.map(i => `${i.name} x${i.quantity}`).join(' | ');
         }
-        // General cleanup
+        if (typeof val === 'object' && val !== null) {
+          val = JSON.stringify(val);
+        }
         const escaped = ('' + (val ?? '')).replace(/"/g, '""');
         return `"${escaped}"`;
       });
       csvRows.push(values.join(','));
     }
     
-    const csvString = "\ufeff" + csvRows.join('\n'); // Adding BOM for UTF-8 Excel support
+    const csvString = "\ufeff" + csvRows.join('\n');
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.href = url;
+    link.download = `${filename}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -219,7 +219,7 @@ export const Admin: React.FC<AdminProps> = ({
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-xl font-black">গ্রাহক তালিকা ({customers.length})</h2>
-              <button onClick={() => downloadCSV(customers, 'fp_customers')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs flex items-center gap-2 shadow-md">
+              <button onClick={() => downloadCSV(customers, 'fp_customers')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs shadow-md">
                 📥 CSV ডাউনলোড
               </button>
             </div>
@@ -227,10 +227,10 @@ export const Admin: React.FC<AdminProps> = ({
               <thead><tr className="border-b text-[10px] font-black text-slate-400 uppercase tracking-widest"><th className="pb-4">নাম ও ফোন</th><th className="pb-4">অর্ডার সংখ্যা</th><th className="pb-4">মোট কেনাকাটা</th><th className="pb-4">শেষ লোকেশন</th></tr></thead>
               <tbody className="divide-y">
                 {customers.length === 0 ? (
-                  <tr><td colSpan={4} className="py-10 text-center text-slate-400 font-bold">এখনো কোনো গ্রাহক ডাটা তৈরি হয়নি।</td></tr>
+                  <tr><td colSpan={4} className="py-20 text-center text-slate-400 font-bold">এখনো কোনো গ্রাহক ডাটা তৈরি হয়নি।</td></tr>
                 ) : customers.map(c => (
                   <tr key={c.phone} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4"><div className="font-black text-sm">{c.name || 'Unknown'}</div><div className="text-[10px] text-slate-400 font-bold">{c.phone}</div></td>
+                    <td className="py-4"><div className="font-black text-sm">{c.name || 'নতুন গ্রাহক'}</div><div className="text-[10px] text-slate-400 font-bold">{c.phone}</div></td>
                     <td className="py-4 font-black">{c.total_orders} টি</td>
                     <td className="py-4 font-black text-green-700">৳{c.total_spent}</td>
                     <td className="py-4"><span className="px-2 py-0.5 bg-slate-100 rounded text-[9px] font-black text-slate-600">{c.last_location}</span></td>
@@ -244,15 +244,17 @@ export const Admin: React.FC<AdminProps> = ({
         {activeTab === 'Orders' && (
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
              <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xl font-black">অর্ডার রেকর্ড</h2>
-              <button onClick={() => downloadCSV(orders, 'fp_orders')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs flex items-center gap-2 shadow-md">
+              <h2 className="text-xl font-black">অর্ডার রেকর্ড ({orders.length})</h2>
+              <button onClick={() => downloadCSV(orders, 'fp_orders')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs shadow-md">
                 📥 CSV ডাউনলোড
               </button>
             </div>
             <table className="w-full text-left">
               <thead><tr className="border-b text-[10px] uppercase font-black text-slate-400"><th className="pb-4">আইডি</th><th className="pb-4">গ্রাহক</th><th className="pb-4">লোকেশন</th><th className="pb-4">টাকা</th><th className="pb-4">অবস্থা</th><th className="pb-4 text-right">আপডেট</th></tr></thead>
               <tbody className="divide-y">
-                {orders.map(o => (
+                {orders.length === 0 ? (
+                  <tr><td colSpan={6} className="py-20 text-center text-slate-400 font-bold">কোনো অর্ডার পাওয়া যায়নি।</td></tr>
+                ) : orders.map(o => (
                   <tr key={o.id} className="hover:bg-slate-50 transition-colors">
                     <td className="py-4 font-black text-sm">{o.id}</td>
                     <td className="py-4"><div className="font-black text-xs">{o.customerName}</div><div className="text-[10px] text-slate-400">{o.customerPhone}</div></td>
@@ -335,7 +337,6 @@ export const Admin: React.FC<AdminProps> = ({
                </div>
             </div>
 
-            {/* Staff Management Section */}
             <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">👥 ইউজার ও স্টাফ ব্যবস্থাপনা</h3>
@@ -358,20 +359,6 @@ export const Admin: React.FC<AdminProps> = ({
                     <button onClick={() => onDeleteStaff(s.id)} className="text-red-500 hover:text-red-700 transition-colors">🗑️</button>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50">
-                <h3 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-2">🚀 ডাটাবেজ টুলস</h3>
-                <button onClick={onSeedDatabase} className="w-full py-4 rounded-xl bg-blue-600 text-white font-black shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"><span>🌱</span> ডামি ডাটা সিড করুন</button>
-              </div>
-              <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-50">
-                <h3 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-2">🛡️ সিস্টেম হেলথ</h3>
-                <div className="space-y-2">
-                   <div className="flex justify-between text-xs font-bold"><span className="text-slate-400">Database:</span> <span className={isSupabaseConfigured ? 'text-green-500' : 'text-red-500'}>{isSupabaseConfigured ? 'Connected' : 'Disconnected'}</span></div>
-                   <div className="flex justify-between text-xs font-bold"><span className="text-slate-400">Products Sync:</span> <span className="text-blue-500">{products.length} Items</span></div>
-                </div>
               </div>
             </div>
           </div>

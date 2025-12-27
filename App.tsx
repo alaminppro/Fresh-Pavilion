@@ -49,7 +49,6 @@ const App: React.FC = () => {
   }, []);
 
   const fetchInitialData = async () => {
-    setIsLoading(true);
     if (!isSupabaseConfigured || !supabase) {
       const savedProducts = localStorage.getItem('fp_products');
       setProducts(savedProducts ? JSON.parse(savedProducts) : INITIAL_PRODUCTS as Product[]);
@@ -58,12 +57,12 @@ const App: React.FC = () => {
     }
     try {
       const [
-        { data: dbProducts },
-        { data: dbOrders },
+        { data: dbProducts, error: pErr },
+        { data: dbOrders, error: oErr },
         { data: dbCategories },
         { data: dbStaff },
         { data: dbSettings },
-        { data: dbCustomers }
+        { data: dbCustomers, error: cErr }
       ] = await Promise.all([
         supabase.from('products').select('*').order('created_at', { ascending: false }),
         supabase.from('orders').select('*').order('created_at', { ascending: false }),
@@ -73,11 +72,33 @@ const App: React.FC = () => {
         supabase.from('customers').select('*').order('total_spent', { ascending: false })
       ]);
       
+      if (pErr) console.error("Products fetch error:", pErr);
+      if (oErr) console.error("Orders fetch error:", oErr);
+      if (cErr) console.error("Customers fetch error:", cErr);
+
       setProducts(dbProducts && dbProducts.length > 0 ? (dbProducts as Product[]) : (INITIAL_PRODUCTS as Product[]));
-      if (dbOrders) setOrders(dbOrders as Order[]);
+      
+      // Map DB snake_case back to JS CamelCase for the Order interface
+      if (dbOrders) {
+        const mappedOrders: Order[] = dbOrders.map((o: any) => ({
+          id: o.id,
+          customerName: o.customer_name,
+          customerPhone: o.customer_phone,
+          location: o.location,
+          items: o.items,
+          totalPrice: o.total_price,
+          status: o.status,
+          created_at: o.created_at
+        }));
+        setOrders(mappedOrders);
+      } else {
+        setOrders([]);
+      }
+
       if (dbStaff) setStaff(dbStaff as AdminUser[]);
       if (dbCategories) setCategories(dbCategories.map(c => c.name));
-      if (dbCustomers) setCustomers(dbCustomers || []);
+      if (dbCustomers) setCustomers(dbCustomers);
+      else setCustomers([]);
       
       if (dbSettings) {
         const newSettings = { ...settings };
@@ -87,7 +108,7 @@ const App: React.FC = () => {
         setSettings(newSettings);
       }
     } catch (err) {
-      console.error("Error fetching data:", err);
+      console.error("Critical error fetching data:", err);
     } finally {
       setIsLoading(false);
     }
@@ -101,28 +122,32 @@ const App: React.FC = () => {
   };
 
   const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'status'>): Promise<boolean> => {
-    const newOrder = {
-      customerName: orderData.customerName,
-      customerPhone: orderData.customerPhone,
+    const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
+    const now = new Date().toISOString();
+
+    // Map to DB snake_case columns
+    const dbOrderPayload = {
+      id: orderId,
+      customer_name: orderData.customerName,
+      customer_phone: orderData.customerPhone,
       location: orderData.location,
       items: orderData.items,
-      totalPrice: orderData.totalPrice,
-      id: `#FP-${Math.floor(Math.random() * 900000 + 100000)}`,
+      total_price: orderData.totalPrice,
       status: 'Pending',
-      created_at: new Date().toISOString()
+      created_at: now
     };
 
     if (isSupabaseConfigured && supabase) {
-      // 1. Save Order
-      const { error: orderError } = await supabase.from('orders').insert([newOrder]);
+      // 1. Insert Order
+      const { error: orderError } = await supabase.from('orders').insert([dbOrderPayload]);
       if (orderError) {
+        console.error("Supabase order error:", orderError);
         alert("অর্ডার সম্পন্ন করা যায়নি: " + orderError.message);
         return false;
       }
       
-      // 2. Update/Create Customer stats
+      // 2. Update/Create Customer
       try {
-        // Use maybeSingle to avoid crashing if customer is new
         const { data: existingCust } = await supabase
           .from('customers')
           .select('*')
@@ -137,17 +162,24 @@ const App: React.FC = () => {
           total_spent: (existingCust?.total_spent || 0) + orderData.totalPrice
         };
 
-        await supabase.from('customers').upsert([customerPayload], { onConflict: 'phone' });
+        const { error: custError } = await supabase.from('customers').upsert([customerPayload]);
+        if (custError) console.error("Customer upsert error:", custError);
       } catch (custErr) {
-        console.warn("Customer database update warning:", custErr);
+        console.warn("Customer statistics update failed silently", custErr);
       }
       
-      setOrders(prev => [newOrder as Order, ...prev]);
       setCart([]);
-      fetchInitialData(); // Refresh all lists
+      await fetchInitialData(); // Refresh everything from source of truth
       return true;
     } else {
-      setOrders(prev => [newOrder as Order, ...prev]);
+      // Local fallback for dev/testing
+      const localOrder: Order = {
+        ...orderData,
+        id: orderId,
+        status: 'Pending',
+        created_at: now
+      };
+      setOrders(prev => [localOrder, ...prev]);
       setCart([]);
       return true;
     }
@@ -170,7 +202,7 @@ const App: React.FC = () => {
 
   const isAdminMode = currentPage === 'admin';
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-bold">লোড হচ্ছে...</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-black text-green-600 text-xl">ফ্রেশ প্যাভিলিয়ন লোড হচ্ছে...</div>;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FDFDFD]">
@@ -213,7 +245,7 @@ const App: React.FC = () => {
             onAddStaff={async (s) => { if (supabase) { const { data } = await supabase.from('admin_users').insert([s]).select(); if (data) setStaff([...staff, data[0]]); } }}
             onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); setStaff(staff.filter(s => s.id !== id)); }}
             onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); setOrders(orders.map(o => o.id === id ? { ...o, status } : o)); }}
-            onSeedDatabase={async () => { /* No logic needed for this turn */ }}
+            onSeedDatabase={() => {}}
             onBackToSite={() => setCurrentPage('home')} 
             settings={settings} onUpdateSetting={handleUpdateSetting}
           />

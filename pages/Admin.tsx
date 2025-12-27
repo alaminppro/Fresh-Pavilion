@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Product, Order, AdminUser } from '../types';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { FALLBACK_IMAGE } from '../constants';
 
 type AdminTab = 'Dashboard' | 'Products' | 'Orders' | 'Customers' | 'Categories' | 'Settings';
 
@@ -64,7 +65,6 @@ export const Admin: React.FC<AdminProps> = ({
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Updated Credentials
     const masterAdmin = (usernameInput === 'fpadmin2025' && passwordInput === 'Fp2025@2030');
     const staffMatch = staff.find(s => s.username === usernameInput && s.password === passwordInput);
     
@@ -106,20 +106,13 @@ export const Admin: React.FC<AdminProps> = ({
   };
 
   const downloadCSV = (data: any[], filename: string) => {
-    if (!data || data.length === 0) {
-      alert("কোন ডাটা নেই!");
-      return;
-    }
-    
+    if (!data || data.length === 0) { alert("কোন ডাটা নেই!"); return; }
     const headers = Object.keys(data[0]);
-    const csvRows = [];
-    csvRows.push(headers.join(','));
+    const csvRows = [headers.join(',')];
     for (const row of data) {
       const values = headers.map(header => {
         let val = row[header];
-        if (header === 'items' && Array.isArray(val)) {
-          val = val.map(i => `${i.name} x${i.quantity}`).join(' | ');
-        }
+        if (header === 'items' && Array.isArray(val)) val = val.map(i => `${i.name} x${i.quantity}`).join(' | ');
         const escaped = ('' + (val ?? '')).replace(/"/g, '""');
         return `"${escaped}"`;
       });
@@ -129,16 +122,11 @@ export const Admin: React.FC<AdminProps> = ({
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = url;
-    link.download = `${filename}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    link.href = url; link.download = `${filename}_${new Date().toLocaleDateString('en-GB').replace(/\//g, '-')}.csv`;
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
 
-  const toggleStock = () => {
-    setFormState(prev => ({ ...prev, stock: prev.stock > 0 ? 0 : 10 }));
-  };
+  const toggleStock = () => setFormState(prev => ({ ...prev, stock: prev.stock > 0 ? 0 : 10 }));
 
   if (!isLoggedIn) {
     return (
@@ -149,20 +137,8 @@ export const Admin: React.FC<AdminProps> = ({
             <h2 className="text-3xl font-black text-slate-800 tracking-tight">অ্যাডমিন প্যানেল</h2>
           </div>
           <form onSubmit={handleLogin} className="space-y-6">
-            <input 
-              type="text" 
-              value={usernameInput} 
-              onChange={(e) => setUsernameInput(e.target.value)} 
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500 text-slate-900 placeholder:text-slate-500" 
-              placeholder="ইউজারনেম" 
-            />
-            <input 
-              type="password" 
-              value={passwordInput} 
-              onChange={(e) => setPasswordInput(e.target.value)} 
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500 text-slate-900 placeholder:text-slate-500" 
-              placeholder="পাসওয়ার্ড" 
-            />
+            <input type="text" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500 text-slate-900 placeholder:text-slate-500" placeholder="ইউজারনেম" />
+            <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold outline-none focus:border-green-500 text-slate-900 placeholder:text-slate-500" placeholder="পাসওয়ার্ড" />
             <button type="submit" className="w-full py-4 rounded-2xl text-white font-black text-xl shadow-lg bg-[#2E7D32] hover:bg-green-700 transition-all">প্রবেশ করুন</button>
           </form>
           <div className="mt-8 text-center"><button onClick={onBackToSite} className="text-slate-500 font-bold text-sm hover:text-slate-700">ওয়েবসাইটে ফিরে যান</button></div>
@@ -219,7 +195,7 @@ export const Admin: React.FC<AdminProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map(p => (
                 <div key={p.id} className="p-4 bg-slate-50 rounded-2xl flex gap-4 border border-slate-100 hover:shadow-md transition-shadow relative">
-                  <img src={p.image} className="w-16 h-16 rounded-xl object-cover" />
+                  <img src={p.image || FALLBACK_IMAGE} onError={(e) => e.currentTarget.src = FALLBACK_IMAGE} className="w-16 h-16 rounded-xl object-cover" />
                   <div className="flex-grow overflow-hidden">
                     <h4 className="font-black text-sm truncate text-slate-800">{p.name}</h4>
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{p.category}</span>
@@ -246,23 +222,15 @@ export const Admin: React.FC<AdminProps> = ({
                 <p className="text-[10px] text-slate-400 font-bold mt-1">স্বয়ংক্রিয়ভাবে সিঙ্ক হয়</p>
               </div>
               <div className="flex gap-2">
-                <button 
-                  onClick={handleSync} 
-                  disabled={isSyncing}
-                  className={`px-4 py-2 border-2 border-green-600 text-green-700 font-black rounded-xl text-xs transition-all flex items-center gap-2 ${isSyncing ? 'opacity-50' : 'hover:bg-green-50'}`}
-                >
-                  {isSyncing ? 'সিঙ্ক হচ্ছে...' : '🔄 গ্রাহক ডাটা সিঙ্ক'}
-                </button>
-                <button onClick={() => downloadCSV(customers, 'fp_customers')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs shadow-md">
-                  📥 CSV ডাউনলোড
-                </button>
+                <button onClick={handleSync} disabled={isSyncing} className={`px-4 py-2 border-2 border-green-600 text-green-700 font-black rounded-xl text-xs transition-all flex items-center gap-2 ${isSyncing ? 'opacity-50' : 'hover:bg-green-50'}`}>{isSyncing ? 'সিঙ্ক হচ্ছে...' : '🔄 গ্রাহক ডাটা সিঙ্ক'}</button>
+                <button onClick={() => downloadCSV(customers, 'fp_customers')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs shadow-md">📥 CSV ডাউনলোড</button>
               </div>
             </div>
             <table className="w-full text-left">
               <thead><tr className="border-b text-[10px] font-black text-slate-400 uppercase tracking-widest"><th className="pb-4">নাম ও ফোন</th><th className="pb-4">অর্ডার সংখ্যা</th><th className="pb-4">মোট কেনাকাটা</th><th className="pb-4">নিবন্ধনের সময়</th></tr></thead>
               <tbody className="divide-y">
                 {customers.length === 0 ? (
-                  <tr><td colSpan={4} className="py-20 text-center text-slate-400 font-bold">কোনো গ্রাহক ডাটা পাওয়া যায়নি। অর্ডার আসলে এখানে দেখা যাবে।</td></tr>
+                  <tr><td colSpan={4} className="py-20 text-center text-slate-400 font-bold">কোনো গ্রাহক ডাটা পাওয়া যায়নি।</td></tr>
                 ) : customers.map(c => (
                   <tr key={c.customer_phone} className="hover:bg-slate-50 transition-colors">
                     <td className="py-4"><div className="font-black text-sm text-slate-900">{c.customer_name || 'নাম নেই'}</div><div className="text-[10px] text-slate-400 font-bold">{c.customer_phone}</div></td>
@@ -280,9 +248,7 @@ export const Admin: React.FC<AdminProps> = ({
           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
              <div className="flex justify-between items-center mb-8">
               <h2 className="text-xl font-black">অর্ডার রেকর্ড ({orders.length})</h2>
-              <button onClick={() => downloadCSV(orders, 'fp_orders')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs shadow-md">
-                📥 CSV ডাউনলোড
-              </button>
+              <button onClick={() => downloadCSV(orders, 'fp_orders')} className="px-4 py-2 bg-slate-900 text-white font-black rounded-xl text-xs shadow-md">📥 CSV ডাউনলোড</button>
             </div>
             <table className="w-full text-left">
               <thead><tr className="border-b text-[10px] uppercase font-black text-slate-400"><th className="pb-4">আইডি</th><th className="pb-4">গ্রাহক</th><th className="pb-4">লোকেশন</th><th className="pb-4">টাকা</th><th className="pb-4">অবস্থা</th><th className="pb-4 text-right">আপডেট</th></tr></thead>
@@ -356,30 +322,15 @@ export const Admin: React.FC<AdminProps> = ({
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-1">
                           <span className="text-[9px] font-bold text-slate-500">সাইটের নাম</span>
-                          <input 
-                            type="text" 
-                            value={settings.site_name} 
-                            onChange={e => onUpdateSetting('site_name', e.target.value)} 
-                            className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500 text-slate-900" 
-                          />
+                          <input type="text" value={settings.site_name} onChange={e => onUpdateSetting('site_name', e.target.value)} className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500 text-slate-900" />
                         </div>
                         <div className="space-y-1">
                           <span className="text-[9px] font-bold text-slate-500">পায়রা হোয়াটসঅ্যাপ নম্বর</span>
-                          <input 
-                            type="text" 
-                            value={settings.whatsapp_number} 
-                            onChange={e => onUpdateSetting('whatsapp_number', e.target.value)} 
-                            className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500 text-slate-900" 
-                          />
+                          <input type="text" value={settings.whatsapp_number} onChange={e => onUpdateSetting('whatsapp_number', e.target.value)} className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500 text-slate-900" />
                         </div>
                         <div className="space-y-1">
                           <span className="text-[9px] font-bold text-slate-500">সাপোর্ট ফোন নম্বর</span>
-                          <input 
-                            type="text" 
-                            value={settings.support_phone} 
-                            onChange={e => onUpdateSetting('support_phone', e.target.value)} 
-                            className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500 text-slate-900" 
-                          />
+                          <input type="text" value={settings.support_phone} onChange={e => onUpdateSetting('support_phone', e.target.value)} className="w-full bg-slate-50 border rounded-xl p-3 font-bold text-sm outline-none focus:border-green-500 text-slate-900" />
                         </div>
                      </div>
                   </div>
@@ -443,66 +394,33 @@ export const Admin: React.FC<AdminProps> = ({
             <div className="grid grid-cols-2 gap-5">
               <div className="col-span-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">পণ্যের নাম</label>
-                <input 
-                  type="text" 
-                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" 
-                  value={formState.name} 
-                  onChange={e=>setFormState({...formState, name: e.target.value})} 
-                  placeholder="উদা: অর্গানিক মধু" 
-                />
+                <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" value={formState.name} onChange={e=>setFormState({...formState, name: e.target.value})} placeholder="উদা: অর্গানিক মধু" />
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">ক্যাটাগরি</label>
-                <select 
-                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none cursor-pointer text-slate-900" 
-                  value={formState.category} 
-                  onChange={e=>setFormState({...formState, category: e.target.value})}
-                >
+                <select className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none cursor-pointer text-slate-900" value={formState.category} onChange={e=>setFormState({...formState, category: e.target.value})}>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">মূল্য (৳)</label>
-                <input 
-                  type="number" 
-                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" 
-                  value={formState.price} 
-                  onChange={e=>setFormState({...formState, price: Number(e.target.value)})} 
-                  placeholder="৳৪৫০" 
-                />
+                <input type="number" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" value={formState.price} onChange={e=>setFormState({...formState, price: Number(e.target.value)})} placeholder="৳৪৫০" />
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">সংক্ষিপ্ত বিবরণ</label>
-                <input 
-                  type="text" 
-                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" 
-                  value={formState.description} 
-                  onChange={e=>setFormState({...formState, description: e.target.value})} 
-                  placeholder="উদা: ১০০% খাঁটি প্রাকৃতিক মধু" 
-                />
+                <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" value={formState.description} onChange={e=>setFormState({...formState, description: e.target.value})} placeholder="উদা: ১০০% খাঁটি প্রাকৃতিক মধু" />
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">বিস্তারিত বিবরণ (Description)</label>
-                <textarea 
-                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500 h-32 resize-none" 
-                  value={formState.longDescription} 
-                  onChange={e=>setFormState({...formState, longDescription: e.target.value})} 
-                  placeholder="পণ্যের গুণাগুণ ও বিস্তারিত এখানে লিখুন..." 
-                />
+                <textarea className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500 h-32 resize-none" value={formState.longDescription} onChange={e=>setFormState({...formState, longDescription: e.target.value})} placeholder="পণ্যের গুণাগুণ ও বিস্তারিত এখানে লিখুন..." />
               </div>
               <div className="col-span-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">পণ্যের ছবি (URL অথবা আপলোড)</label>
                 <div className="space-y-3">
-                  <input 
-                    type="text" 
-                    className="w-full bg-slate-50 border rounded-xl p-3 font-bold outline-none text-slate-900 focus:border-blue-500 text-xs" 
-                    value={formState.image} 
-                    onChange={e=>setFormState({...formState, image: e.target.value})} 
-                    placeholder="ইমেজ লিংক এখানে পেস্ট করুন (Optional)" 
-                  />
+                  <input type="text" className="w-full bg-slate-50 border rounded-xl p-3 font-bold outline-none text-slate-900 focus:border-blue-500 text-xs" value={formState.image} onChange={e=>setFormState({...formState, image: e.target.value})} placeholder="ইমেজ লিংক এখানে পেস্ট করুন (Optional)" />
                   <div className="flex items-center gap-4">
                     <div className="w-20 h-20 rounded-xl bg-slate-100 overflow-hidden border border-slate-200">
-                       {formState.image ? <img src={formState.image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">No Image</div>}
+                       {formState.image ? <img src={formState.image} onError={(e) => e.currentTarget.src = FALLBACK_IMAGE} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-400">No Image</div>}
                     </div>
                     <button onClick={() => fileInputRef.current?.click()} className="flex-grow py-3 border-2 border-dashed rounded-xl font-black text-slate-400 text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all">গ্যালারি থেকে ফটো আপলোড</button>
                     <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={(e) => handleImageUpload(e, 'product')} />
@@ -511,22 +429,13 @@ export const Admin: React.FC<AdminProps> = ({
               </div>
               <div>
                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">স্টক স্ট্যাটাস</label>
-                 <button 
-                  onClick={toggleStock}
-                  className={`w-full py-4 rounded-xl font-black text-sm transition-all border-2 ${formState.stock > 0 ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}
-                 >
+                 <button onClick={toggleStock} className={`w-full py-4 rounded-xl font-black text-sm transition-all border-2 ${formState.stock > 0 ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
                    {formState.stock > 0 ? '✅ স্টক আছে (In Stock)' : '❌ স্টক নেই (Stock Out)'}
                  </button>
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">একক (Unit)</label>
-                <input 
-                  type="text" 
-                  className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" 
-                  value={formState.unit} 
-                  onChange={e=>setFormState({...formState, unit: e.target.value})} 
-                  placeholder="টি / কেজি / গ্রাম" 
-                />
+                <input type="text" className="w-full bg-slate-50 border rounded-xl p-4 font-bold outline-none text-slate-900 focus:border-green-500" value={formState.unit} onChange={e=>setFormState({...formState, unit: e.target.value})} placeholder="টি / কেজি / গ্রাম" />
               </div>
             </div>
             <div className="mt-10 flex gap-4">

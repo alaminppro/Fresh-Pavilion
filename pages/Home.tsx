@@ -39,11 +39,12 @@ export const Home: React.FC<HomeProps> = ({
 
   return (
     <div className="space-y-0 pb-16">
+      {/* Hero Section - Full Width, No Side Padding */}
       <section className="relative h-[600px] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img src={heroImage || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1600"} alt="Hero" className="w-full h-full object-cover brightness-[0.4]" />
         </div>
-        <div className="relative z-10 max-w-7xl mx-auto px-4 w-full">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 w-full">
           <div className="max-w-2xl bg-white/5 backdrop-blur-xl p-10 rounded-[3rem] border border-white/10 shadow-2xl">
             <span className="inline-block px-4 py-1.5 bg-green-500 text-white text-[10px] font-black uppercase tracking-widest rounded-full mb-6">ক্যাম্পাস ডেলিভারি চালু আছে 🎓</span>
             <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-[1.8] tracking-tight">
@@ -56,22 +57,23 @@ export const Home: React.FC<HomeProps> = ({
         </div>
       </section>
 
-      <section className="bg-white py-16 border-b">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            { emoji: '🌿', title: '১০০% অর্গানিক', desc: 'সম্পূর্ণ কেমিক্যাল মুক্ত ও প্রাকৃতিক পণ্য।', bg: 'bg-green-50', text: 'text-green-700' },
-            { emoji: '🎓', title: 'চবি শিক্ষার্থী পরিচালিত', desc: 'বিশ্বস্ততা ও মানের সর্বোচ্চ গ্যারান্টি।', bg: 'bg-blue-50', text: 'text-blue-700' },
-            { emoji: '⚡', title: 'দ্রুত ডেলিভারি', desc: 'ক্যাম্পাসের ভেতর আমরাই সেরা।', bg: 'bg-orange-50', text: 'text-orange-700' },
-          ].map((feat, idx) => (
-            <div key={idx} className="flex items-center gap-6 p-8 rounded-[2.5rem] bg-slate-50/40 border border-slate-100 hover:shadow-xl hover:bg-white transition-all">
-              <div className={`shrink-0 w-20 h-20 ${feat.bg} ${feat.text} rounded-3xl flex items-center justify-center text-4xl shadow-sm`}>{feat.emoji}</div>
-              <div><h3 className="text-2xl font-black text-slate-800 mb-1">{feat.title}</h3><p className="text-slate-500 font-medium leading-tight">{feat.desc}</p></div>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Internal Sections - Container with Padding */}
+      <div className="px-6 md:px-12 max-w-[1600px] mx-auto space-y-24">
+        <section className="bg-white py-16 border-b">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { emoji: '🌿', title: '১০০% অর্গানিক', desc: 'সম্পূর্ণ কেমিক্যাল মুক্ত ও প্রাকৃতিক পণ্য।', bg: 'bg-green-50', text: 'text-green-700' },
+              { emoji: '🎓', title: 'চবি শিক্ষার্থী পরিচালিত', desc: 'বিশ্বস্ততা ও মানের সর্বোচ্চ গ্যারান্টি।', bg: 'bg-blue-50', text: 'text-blue-700' },
+              { emoji: '⚡', title: 'দ্রুত ডেলিভারি', desc: 'ক্যাম্পাসের ভেতর আমরাই সেরা।', bg: 'bg-orange-50', text: 'text-orange-700' },
+            ].map((feat, idx) => (
+              <div key={idx} className="flex items-center gap-6 p-8 rounded-[2.5rem] bg-slate-50/40 border border-slate-100 hover:shadow-xl hover:bg-white transition-all">
+                <div className={`shrink-0 w-20 h-20 ${feat.bg} ${feat.text} rounded-3xl flex items-center justify-center text-4xl shadow-sm`}>{feat.emoji}</div>
+                <div><h3 className="text-2xl font-black text-slate-800 mb-1">{feat.title}</h3><p className="text-slate-500 font-medium leading-tight">{feat.desc}</p></div>
+              </div>
+            ))}
+          </div>
+        </section>
 
-      <div className="max-w-7xl mx-auto px-4 mt-16 space-y-24">
          <ProductSection title="জনপ্রিয় পণ্যসমূহ" subtitle="Popular Choice" products={filteredProducts.slice(0, 4)} onAddToCart={onAddToCart} onToggleWishlist={onToggleWishlist} onProductClick={onProductClick} isInWishlist={isInWishlist} onSeeMore={onShopNow} />
          <ProductSection title="বেস্ট সেলিং" subtitle="Best Selling" products={filteredProducts.slice(4, 8)} onAddToCart={onAddToCart} onToggleWishlist={onToggleWishlist} onProductClick={onProductClick} isInWishlist={isInWishlist} onSeeMore={onShopNow} />
 

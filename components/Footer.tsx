@@ -5,15 +5,22 @@ import { COLORS } from '../constants';
 interface FooterProps {
   siteName: string;
   supportPhone: string;
+  logo: string | null;
 }
 
-export const Footer: React.FC<FooterProps> = ({ siteName, supportPhone }) => {
+export const Footer: React.FC<FooterProps> = ({ siteName, supportPhone, logo }) => {
   return (
     <footer className="bg-white border-t py-12 px-4">
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
         <div>
           <div className="flex items-center space-x-2 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center"><span className="text-white font-black">FP</span></div>
+            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-100">
+              {logo ? (
+                <img src={logo} className="w-full h-full object-cover" alt={siteName} />
+              ) : (
+                <div className="w-full h-full bg-green-600 flex items-center justify-center"><span className="text-white font-black">FP</span></div>
+              )}
+            </div>
             <h2 className="text-xl font-black text-slate-800 tracking-tight">{siteName}</h2>
           </div>
           <p className="text-gray-500 text-sm leading-relaxed font-medium">চট্টগ্রাম বিশ্ববিদ্যালয় ক্যাম্পাসের প্রথম শিক্ষার্থী-চালিত অর্গানিক শপ। আমরা সরবরাহ করি খাঁটি ও ভেজালমুক্ত পণ্য।</p>

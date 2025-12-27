@@ -235,7 +235,7 @@ const App: React.FC = () => {
           siteName={settings.site_name}
         />
       )}
-      <main className={`flex-grow ${isAdminMode ? '' : 'pt-20'} px-6 md:px-12 max-w-[1600px] mx-auto w-full`}>
+      <main className={`flex-grow ${isAdminMode ? '' : 'pt-20'} mx-auto w-full`}>
         {currentPage === 'home' && (
           <Home 
             products={products} wishlist={wishlist} onShopNow={() => setCurrentPage('shop')} onAddToCart={addToCart} 
@@ -245,11 +245,13 @@ const App: React.FC = () => {
           />
         )}
         {currentPage === 'shop' && (
-          <Shop 
-            products={products} wishlist={wishlist} onAddToCart={addToCart} 
-            onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
-            onProductClick={openProductDetail} 
-          />
+          <div className="px-6 md:px-12 max-w-[1600px] mx-auto">
+            <Shop 
+              products={products} wishlist={wishlist} onAddToCart={addToCart} 
+              onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
+              onProductClick={openProductDetail} 
+            />
+          </div>
         )}
         {currentPage === 'admin' && (
           <Admin 
@@ -269,17 +271,19 @@ const App: React.FC = () => {
           />
         )}
         {currentPage === 'product-detail' && products.find(p => p.id === selectedProductId) && (
-          <ProductDetail 
-            product={products.find(p => p.id === selectedProductId)!} allProducts={products} 
-            onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
-            isWishlisted={wishlist.some(p => p.id === selectedProductId)} 
-            onProductClick={openProductDetail} 
-            onClose={closeProductDetail}
-            wishlist={wishlist} whatsappNumber={settings.whatsapp_number} 
-          />
+          <div className="px-6 md:px-12 max-w-[1600px] mx-auto">
+            <ProductDetail 
+              product={products.find(p => p.id === selectedProductId)!} allProducts={products} 
+              onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
+              isWishlisted={wishlist.some(p => p.id === selectedProductId)} 
+              onProductClick={openProductDetail} 
+              onClose={closeProductDetail}
+              wishlist={wishlist} whatsappNumber={settings.whatsapp_number} 
+            />
+          </div>
         )}
       </main>
-      {!isAdminMode && <Footer siteName={settings.site_name} supportPhone={settings.support_phone} />}
+      {!isAdminMode && <Footer siteName={settings.site_name} supportPhone={settings.support_phone} logo={settings.logo} />}
       <CartSidebar 
         isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} 
         onRemove={(id) => setCart(cart.filter(i => i.id !== id))} 

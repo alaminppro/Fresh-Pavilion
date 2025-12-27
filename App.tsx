@@ -75,12 +75,11 @@ const App: React.FC = () => {
       
       setProducts(dbProducts && dbProducts.length > 0 ? (dbProducts as Product[]) : (INITIAL_PRODUCTS as Product[]));
       
-      // Explicit Mapping from DB (snake_case) to State (camelCase)
       if (dbOrders) {
         const mappedOrders: Order[] = dbOrders.map((o: any) => ({
           id: o.id,
-          customerName: o.customer_name, // Map customer_name -> customerName
-          customerPhone: o.customer_phone, // Map customer_phone -> customerPhone
+          customerName: o.customer_name,
+          customerPhone: o.customer_phone,
           location: o.location,
           items: o.items,
           totalPrice: Number(o.total_price),
@@ -92,7 +91,7 @@ const App: React.FC = () => {
 
       if (dbStaff) setStaff(dbStaff as AdminUser[]);
       if (dbCategories) setCategories(dbCategories.map(c => c.name));
-      if (dbCustomers) setCustomers(dbCustomers);
+      if (dbCustomers) setCustomers(dbCustomers || []);
       
       if (dbSettings) {
         const newSettings = { ...settings };
@@ -113,7 +112,6 @@ const App: React.FC = () => {
     const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
     const now = new Date().toISOString();
 
-    // EXPLICIT MAPPING to DB snake_case columns
     const dbOrderPayload = {
       id: orderId,
       customer_name: orderData.customerName,
@@ -126,7 +124,6 @@ const App: React.FC = () => {
     };
 
     if (isSupabaseConfigured && supabase) {
-      // 1. Insert Order
       const { error: orderError } = await supabase.from('orders').insert([dbOrderPayload]);
       if (orderError) {
         console.error("Order insertion failed:", orderError);
@@ -134,7 +131,6 @@ const App: React.FC = () => {
         return false;
       }
       
-      // 2. Update Customer Profile
       try {
         const { data: existingCust } = await supabase
           .from('customers')
@@ -156,10 +152,9 @@ const App: React.FC = () => {
       }
       
       setCart([]);
-      await fetchInitialData(); // Force refresh Admin data
+      await fetchInitialData(); 
       return true;
     } else {
-      // Local fallback
       const localOrder: Order = { ...orderData, id: orderId, status: 'Pending', created_at: now };
       setOrders(prev => [localOrder, ...prev]);
       setCart([]);
@@ -182,7 +177,6 @@ const App: React.FC = () => {
     window.scrollTo(0, 0);
   };
 
-  // Add the missing handleUpdateSetting function to fix the error in line 232
   const handleUpdateSetting = async (key: string, value: string) => {
     setSettings(prev => ({ ...prev, [key]: value }));
     if (isSupabaseConfigured && supabase) {

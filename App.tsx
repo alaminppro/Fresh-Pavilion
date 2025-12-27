@@ -46,9 +46,11 @@ const App: React.FC = () => {
     try {
       const { data: dbProducts } = await supabase.from('products').select('*').order('created_at', { ascending: false });
       const { data: dbOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+      
       setProducts(dbProducts && dbProducts.length > 0 ? (dbProducts as Product[]) : (INITIAL_PRODUCTS as Product[]));
       if (dbOrders) setOrders(dbOrders as Order[]);
     } catch (err) {
+      console.error("Error fetching data:", err);
       setProducts(INITIAL_PRODUCTS as Product[]);
     } finally {
       setIsLoading(false);
@@ -58,11 +60,78 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('fp_cart', JSON.stringify(cart));
     localStorage.setItem('fp_wishlist', JSON.stringify(wishlist));
+    
+    // Only use localStorage as a fallback for products and orders if Supabase is NOT configured
     if (!isSupabaseConfigured) {
       localStorage.setItem('fp_products', JSON.stringify(products));
       localStorage.setItem('fp_orders', JSON.stringify(orders));
     }
   }, [cart, wishlist, products, orders]);
+
+  // --- ADMIN HANDLERS ---
+
+  const handleAddProduct = async (productData: Omit<Product, 'id'>) => {
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase.from('products').insert([productData]).select();
+      if (error) {
+        alert("Error adding product to Supabase: " + error.message);
+        return;
+      }
+      if (data) setProducts([data[0] as Product, ...products]);
+    } else {
+      const newProduct = { ...productData, id: Date.now().toString() };
+      setProducts([newProduct, ...products]);
+    }
+  };
+
+  const handleUpdateProduct = async (updatedProduct: Product) => {
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase
+        .from('products')
+        .update(updatedProduct)
+        .eq('id', updatedProduct.id);
+      
+      if (error) {
+        alert("Error updating product: " + error.message);
+        return;
+      }
+      setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    } else {
+      setProducts(products.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) {
+        alert("Error deleting product: " + error.message);
+        return;
+      }
+      setProducts(products.filter(p => p.id !== id));
+    } else {
+      setProducts(products.filter(p => p.id !== id));
+    }
+  };
+
+  const handleUpdateOrderStatus = async (id: string, status: Order['status']) => {
+    if (isSupabaseConfigured && supabase) {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', id);
+      
+      if (error) {
+        alert("Error updating order: " + error.message);
+        return;
+      }
+      setOrders(orders.map(o => o.id === id ? { ...o, status } : o));
+    } else {
+      setOrders(orders.map(o => o.id === id ? { ...o, status } : o));
+    }
+  };
+
+  // --- SHOP HANDLERS ---
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -92,12 +161,15 @@ const App: React.FC = () => {
       status: 'Pending',
       date: new Date().toISOString()
     };
+
     if (isSupabaseConfigured && supabase) {
       const { error } = await supabase.from('orders').insert([newOrder]);
-      if (!error) {
-        setOrders(prev => [newOrder as Order, ...prev]);
-        setCart([]);
+      if (error) {
+        alert("Order placement failed: " + error.message);
+        return;
       }
+      setOrders(prev => [newOrder as Order, ...prev]);
+      setCart([]);
     } else {
       setOrders(prev => [newOrder as Order, ...prev]);
       setCart([]);
@@ -133,11 +205,46 @@ const App: React.FC = () => {
         />
       )}
       <main className={`flex-grow ${isAdminMode ? '' : 'pt-20'}`}>
-        {currentPage === 'home' && <Home products={products} wishlist={wishlist} onShopNow={() => setCurrentPage('shop')} onAddToCart={addToCart} onToggleWishlist={toggleWishlist} onProductClick={openProductDetail} />}
-        {currentPage === 'shop' && <Shop products={products} wishlist={wishlist} onAddToCart={addToCart} onToggleWishlist={toggleWishlist} onProductClick={openProductDetail} />}
-        {currentPage === 'admin' && <Admin products={products} orders={orders} onAddProduct={(p) => setProducts([{...p, id: Date.now().toString()}, ...products])} onDeleteProduct={(id) => setProducts(products.filter(p => p.id !== id))} onUpdateProduct={(p) => setProducts(products.map(x => x.id === p.id ? p : x))} onUpdateOrderStatus={(id, status) => setOrders(orders.map(o => o.id === id ? {...o, status} : o))} onBackToSite={() => setCurrentPage('home')} />}
+        {currentPage === 'home' && (
+          <Home 
+            products={products} 
+            wishlist={wishlist} 
+            onShopNow={() => setCurrentPage('shop')} 
+            onAddToCart={addToCart} 
+            onToggleWishlist={toggleWishlist} 
+            onProductClick={openProductDetail} 
+          />
+        )}
+        {currentPage === 'shop' && (
+          <Shop 
+            products={products} 
+            wishlist={wishlist} 
+            onAddToCart={addToCart} 
+            onToggleWishlist={toggleWishlist} 
+            onProductClick={openProductDetail} 
+          />
+        )}
+        {currentPage === 'admin' && (
+          <Admin 
+            products={products} 
+            orders={orders} 
+            onAddProduct={handleAddProduct} 
+            onDeleteProduct={handleDeleteProduct} 
+            onUpdateProduct={handleUpdateProduct} 
+            onUpdateOrderStatus={handleUpdateOrderStatus} 
+            onBackToSite={() => setCurrentPage('home')} 
+          />
+        )}
         {currentPage === 'product-detail' && products.find(p => p.id === selectedProductId) && (
-          <ProductDetail product={products.find(p => p.id === selectedProductId)!} allProducts={products} onAddToCart={addToCart} onToggleWishlist={toggleWishlist} isWishlisted={wishlist.some(p => p.id === selectedProductId)} onProductClick={openProductDetail} wishlist={wishlist} />
+          <ProductDetail 
+            product={products.find(p => p.id === selectedProductId)!} 
+            allProducts={products} 
+            onAddToCart={addToCart} 
+            onToggleWishlist={toggleWishlist} 
+            isWishlisted={wishlist.some(p => p.id === selectedProductId)} 
+            onProductClick={openProductDetail} 
+            wishlist={wishlist} 
+          />
         )}
       </main>
       {!isAdminMode && <Footer />}
@@ -155,8 +262,21 @@ const App: React.FC = () => {
         </button>
       )}
 
-      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onRemove={(id) => setCart(cart.filter(i => i.id !== id))} onUpdateQuantity={(id, d) => setCart(cart.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + d)} : i))} onCheckout={createOrder} />
-      <WishlistSidebar isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} items={wishlist} onAddToCart={addToCart} onRemove={toggleWishlist} />
+      <CartSidebar 
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)} 
+        items={cart} 
+        onRemove={(id) => setCart(cart.filter(i => i.id !== id))} 
+        onUpdateQuantity={(id, d) => setCart(cart.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + d)} : i))} 
+        onCheckout={createOrder} 
+      />
+      <WishlistSidebar 
+        isOpen={isWishlistOpen} 
+        onClose={() => setIsWishlistOpen(false)} 
+        items={wishlist} 
+        onAddToCart={addToCart} 
+        onRemove={toggleWishlist} 
+      />
     </div>
   );
 };

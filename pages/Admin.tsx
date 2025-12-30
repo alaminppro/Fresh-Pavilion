@@ -50,7 +50,6 @@ export const Admin: React.FC<AdminProps> = ({
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const heroInputRef = useRef<HTMLInputElement>(null);
-  const productFileInputRef = useRef<HTMLInputElement>(null);
 
   const [formState, setFormState] = useState<Omit<Product, 'id'>>({
     name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি'
@@ -93,27 +92,6 @@ export const Admin: React.FC<AdminProps> = ({
     }
   };
 
-  const downloadCSV = (data: any[], filename: string) => {
-    if (!data || data.length === 0) return;
-    const headers = Object.keys(data[0]);
-    const csvRows = [headers.join(',')];
-    for (const row of data) {
-      const values = headers.map(header => {
-        let val = row[header];
-        if (header === 'items' && Array.isArray(val)) val = val.map(i => `${i.name} x${i.quantity}`).join(' | ');
-        const escaped = ('' + (val ?? '')).replace(/"/g, '""');
-        return `"${escaped}"`;
-      });
-      csvRows.push(values.join(','));
-    }
-    const csvString = "\ufeff" + csvRows.join('\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url; link.download = `${filename}.csv`;
-    document.body.appendChild(link); link.click(); document.body.removeChild(link);
-  };
-
   if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-6 font-['Hind_Siliguri']">
@@ -135,12 +113,13 @@ export const Admin: React.FC<AdminProps> = ({
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-['Hind_Siliguri']">
+      {/* COMPACT SIDEBAR */}
       <aside className="w-64 bg-white border-r border-slate-100 flex flex-col fixed h-full z-40 shadow-xl">
         <div className="p-4 border-b flex items-center gap-3">
-          <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center text-white font-black">A</div>
-          <div className="font-black text-slate-800 text-sm truncate">{currentUser?.username}</div>
+          <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center text-white font-black shrink-0">A</div>
+          <div className="font-black text-slate-800 text-xs truncate">অ্যাডমিন: {currentUser?.username}</div>
         </div>
-        <nav className="flex-grow p-3 space-y-1">
+        <nav className="flex-grow p-3 space-y-1 overflow-y-auto">
           {[
             { id: 'Dashboard', label: 'ড্যাশবোর্ড', icon: '📊' },
             { id: 'Products', label: 'পণ্য', icon: '📦' },
@@ -151,10 +130,9 @@ export const Admin: React.FC<AdminProps> = ({
             { id: 'Categories', label: 'ক্যাটাগরি', icon: '🏷️' },
             { id: 'Settings', label: 'সেটিংস', icon: '⚙️' }
           ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id as AdminTab)} className={`relative w-full flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300 font-black overflow-hidden group ${activeTab === tab.id ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>
-              {activeTab !== tab.id && <div className="absolute inset-0 bg-green-600 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 z-0"></div>}
-              <span className="relative z-10 text-lg">{tab.icon}</span>
-              <span className="relative z-10 text-sm">{tab.label}</span>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id as AdminTab)} className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300 font-black text-sm ${activeTab === tab.id ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50'}`}>
+              <span className="text-lg">{tab.icon}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </nav>
@@ -165,7 +143,7 @@ export const Admin: React.FC<AdminProps> = ({
       </aside>
 
       <main className="flex-grow ml-64 p-10 overflow-y-auto">
-        <header className="mb-10 flex justify-between items-end">
+        <header className="mb-8">
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">{activeTab}</h1>
         </header>
 
@@ -178,111 +156,26 @@ export const Admin: React.FC<AdminProps> = ({
           </div>
         )}
 
-        {activeTab === 'Notifications' && (
-          <div className="space-y-8 text-slate-900 pb-20 max-w-4xl">
-            <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-50">
-              <h3 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-3">
-                <span className="text-orange-500">🔔</span> অর্ডার নোটিফিকেশন সিস্টেম
-              </h3>
-              <p className="text-slate-500 mb-8 font-medium leading-relaxed">
-                নতুন অর্ডার আসার সাথে সাথে ইমেইল বা মেসেজ পেতে নিচের যেকোনো একটি মাধ্যম ব্যবহার করুন। আমরা সার্ভার-সাইড নোটিফিকেশন রিকমেন্ড করি।
-              </p>
-
-              <div className="space-y-10">
-                {/* Discord/Slack/Zapier Option */}
-                <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
-                  <h4 className="font-black text-slate-800 mb-2">Webhook URL (Zapier, Discord, or Make)</h4>
-                  <p className="text-xs text-slate-400 font-bold mb-4 uppercase tracking-widest">সহজ ও দ্রুত মাধ্যম</p>
-                  <input 
-                    type="text" 
-                    value={settings.notification_webhook_url || ''} 
-                    onChange={e => onUpdateSetting('notification_webhook_url', e.target.value)}
-                    className="w-full bg-white border-2 border-slate-100 rounded-xl p-4 font-black text-sm outline-none focus:border-green-500 transition-all mb-4" 
-                    placeholder="https://hooks.zapier.com/..."
-                  />
-                  <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl text-blue-800 text-xs font-bold leading-relaxed">
-                    <span className="text-lg">💡</span>
-                    <span>আপনি যদি Discord ব্যবহার করেন, তবে আপনার চ্যানেলের Webhook URL এখানে দিন। নতুন অর্ডার আসলে সেখানে অটোমেটিক মেসেজ চলে যাবে।</span>
-                  </div>
-                </div>
-
-                {/* Resend/Supabase Instructions */}
-                <div className="p-8 border-2 border-dashed border-slate-200 rounded-[2rem]">
-                  <h4 className="font-black text-slate-800 mb-4 flex items-center gap-2">
-                    📧 ইমেইল নোটিফিকেশন (Advanced)
-                  </h4>
-                  <div className="space-y-4 text-sm text-slate-600 font-medium">
-                    <div className="flex gap-4">
-                      <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0 font-black text-[10px]">১</div>
-                      <p><a href="https://resend.com" target="_blank" className="text-green-600 underline">Resend.com</a>-এ একটি ফ্রি অ্যাকাউন্ট খুলুন।</p>
-                    </div>
-                    <div className="flex gap-4">
-                      <div className="w-6 h-6 rounded-full bg-green-600 text-white flex items-center justify-center shrink-0 font-black text-[10px]">২</div>
-                      <p>Supabase-এ একটি "Edge Function" তৈরি করুন যা নতুন অর্ডারে ইমেইল পাঠাবে।</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'Orders' && (
-           <div className="bg-white p-8 rounded-[2rem] shadow-sm text-slate-900">
-             <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-black">অর্ডার রেকর্ড</h2>
-                <button onClick={() => downloadCSV(orders, 'orders')} className="text-xs font-black text-slate-400 uppercase hover:text-slate-600 transition-all">📥 CSV ডাউনলোড</button>
-             </div>
-             <table className="w-full text-left border-separate border-spacing-y-2">
-               <thead><tr className="text-[10px] uppercase font-black text-slate-400"><th className="pb-4 pl-4">আইডি</th><th className="pb-4">কাস্টমার</th><th className="pb-4">টাকা</th><th className="pb-4">স্ট্যাটাস</th><th className="pb-4 text-right pr-4">অ্যাকশন</th></tr></thead>
-               <tbody className="font-bold">
-                 {orders.map(o => (
-                   <tr key={o.id} onClick={() => setSelectedOrder(o)} className="group bg-slate-50/50 hover:bg-white hover:shadow-md transition-all rounded-xl cursor-pointer overflow-hidden">
-                     <td className="py-5 pl-4 font-black text-sm rounded-l-xl">{o.id}</td>
-                     <td className="py-5">
-                       <div className="font-black text-slate-800">{o.customerName}</div>
-                       <div className="text-[10px] text-slate-400">{o.customerPhone}</div>
-                     </td>
-                     <td className="py-5 font-black text-green-700">৳{o.totalPrice}</td>
-                     <td className="py-5">
-                       <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase ${o.status === 'Delivered' ? 'bg-green-100 text-green-700' : o.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
-                         {o.status}
-                       </span>
-                     </td>
-                     <td className="py-5 text-right pr-4 rounded-r-xl">
-                       <div className="flex items-center justify-end gap-2">
-                         <select value={o.status} onClick={(e) => e.stopPropagation()} onChange={e => onUpdateOrderStatus(o.id, e.target.value as Order['status'])} className="bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-[10px] font-black text-slate-700 outline-none shadow-sm cursor-pointer">
-                           <option value="Pending">Pending</option>
-                           <option value="Delivered">Delivered</option>
-                           <option value="Cancelled">Cancelled</option>
-                         </select>
-                       </div>
-                     </td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-           </div>
-        )}
-        
         {activeTab === 'Products' && (
-           <div className="bg-white p-8 rounded-[2rem] shadow-sm">
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-50">
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xl font-black text-slate-900">পণ্য ব্যবস্থাপনা</h2>
-              <button onClick={() => { setEditingProduct(null); setFormState({name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি'}); setShowProductModal(true); }} className="px-5 py-2.5 bg-green-600 text-white font-black rounded-xl text-sm shadow-md hover:bg-green-700 transition-all">+ নতুন পণ্য</button>
+              <h2 className="text-xl font-black text-slate-800">পণ্য ব্যবস্থাপনা</h2>
+              <button onClick={() => { setEditingProduct(null); setFormState({name: '', price: 0, description: '', longDescription: '', image: '', category: categories[0] || 'খাবার', stock: 10, unit: 'টি'}); setShowProductModal(true); }} className="px-6 py-3 bg-green-600 text-white font-black rounded-2xl shadow-lg hover:bg-green-700 transition-all">+ নতুন পণ্য</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {products.map(p => (
-                <div key={p.id} className="p-4 bg-slate-50 rounded-2xl flex gap-4 border border-slate-100 hover:shadow-md transition-shadow relative">
-                  <img src={p.image || FALLBACK_IMAGE} className="w-16 h-16 rounded-xl object-cover" />
+                <div key={p.id} className="p-4 bg-slate-50 rounded-3xl flex gap-4 border border-slate-100 group transition-all hover:bg-white hover:shadow-xl">
+                  <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0 border border-slate-200">
+                    <img src={p.image || FALLBACK_IMAGE} className="w-full h-full object-cover" alt={p.name} />
+                  </div>
                   <div className="flex-grow overflow-hidden">
-                    <h4 className="font-black text-sm truncate text-slate-800">{p.name}</h4>
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{p.category}</span>
-                    <div className="flex justify-between items-center mt-2">
-                      <span className="font-black text-green-700">৳{p.price}</span>
+                    <h4 className="font-black text-sm truncate text-slate-800 mb-1">{p.name}</h4>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">{p.category}</span>
+                    <div className="flex justify-between items-center">
+                      <span className="font-black text-green-700 text-lg">৳{p.price}</span>
                       <div className="flex gap-1">
-                        <button onClick={() => { setEditingProduct(p); setFormState({...p}); setShowProductModal(true); }} className="p-1.5 bg-blue-50 text-blue-500 rounded-lg">✏️</button>
-                        <button onClick={() => onDeleteProduct(p.id)} className="p-1.5 bg-red-50 text-red-500 rounded-lg">🗑️</button>
+                        <button onClick={() => { setEditingProduct(p); setFormState({...p}); setShowProductModal(true); }} className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-all">✏️</button>
+                        <button onClick={() => { if(confirm('ডিলিট করতে চান?')) onDeleteProduct(p.id); }} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all">🗑️</button>
                       </div>
                     </div>
                   </div>
@@ -291,24 +184,268 @@ export const Admin: React.FC<AdminProps> = ({
             </div>
           </div>
         )}
+
+        {activeTab === 'Orders' && (
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-50 text-slate-900">
+             <table className="w-full text-left border-separate border-spacing-y-2">
+               <thead>
+                 <tr className="text-[10px] uppercase font-black text-slate-400">
+                   <th className="pb-4 pl-4">আইডি</th>
+                   <th className="pb-4">গ্রাহক</th>
+                   <th className="pb-4">মোট টাকা</th>
+                   <th className="pb-4">স্ট্যাটাস</th>
+                   <th className="pb-4 text-right pr-4">অ্যাকশন</th>
+                 </tr>
+               </thead>
+               <tbody className="font-bold">
+                 {orders.map(o => (
+                   <tr key={o.id} onClick={() => setSelectedOrder(o)} className="group bg-slate-50/50 hover:bg-white hover:shadow-md transition-all rounded-2xl cursor-pointer overflow-hidden">
+                     <td className="py-5 pl-4 font-black text-xs rounded-l-2xl">{o.id}</td>
+                     <td className="py-5">
+                       <div className="font-black text-slate-800 text-sm">{o.customerName}</div>
+                       <div className="text-[10px] text-slate-400">{o.customerPhone}</div>
+                     </td>
+                     <td className="py-5 font-black text-green-700">৳{o.totalPrice}</td>
+                     <td className="py-5">
+                       <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase ${o.status === 'Delivered' ? 'bg-green-100 text-green-700' : o.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                         {o.status}
+                       </span>
+                     </td>
+                     <td className="py-5 text-right pr-4 rounded-r-2xl">
+                        <select 
+                          value={o.status} 
+                          onClick={(e) => e.stopPropagation()} 
+                          onChange={e => onUpdateOrderStatus(o.id, e.target.value as Order['status'])}
+                          className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-[10px] font-black text-slate-700 outline-none shadow-sm cursor-pointer"
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Delivered">Delivered</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </select>
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+          </div>
+        )}
+
+        {activeTab === 'Customers' && (
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-50">
+             <table className="w-full text-left border-separate border-spacing-y-2">
+               <thead>
+                 <tr className="text-[10px] uppercase font-black text-slate-400">
+                   <th className="pb-4 pl-4">গ্রাহক</th>
+                   <th className="pb-4">মোট অর্ডার</th>
+                   <th className="pb-4">মোট খরচ</th>
+                   <th className="pb-4">সর্বশেষ লোকেশন</th>
+                 </tr>
+               </thead>
+               <tbody className="font-bold">
+                 {customers.map(c => (
+                   <tr key={c.customer_phone} className="bg-slate-50/50 rounded-2xl overflow-hidden">
+                     <td className="py-5 pl-4 rounded-l-2xl">
+                       <div className="font-black text-slate-800 text-sm">{c.customer_name}</div>
+                       <div className="text-[10px] text-slate-400">{c.customer_phone}</div>
+                     </td>
+                     <td className="py-5 text-slate-700">{c.total_orders} বার</td>
+                     <td className="py-5 text-green-700 font-black">৳{c.total_spent}</td>
+                     <td className="py-5 text-slate-500 rounded-r-2xl">{c.last_location}</td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+          </div>
+        )}
+
+        {activeTab === 'Staff' && (
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-50">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-black text-slate-800">অ্যাডমিন ইউজার লিস্ট</h2>
+              <button onClick={() => setShowStaffModal(true)} className="px-6 py-3 bg-slate-900 text-white font-black rounded-2xl shadow-lg">+ নতুন স্টাফ</button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {staff.map(s => (
+                <div key={s.id} className="p-6 bg-slate-50 rounded-[2rem] flex justify-between items-center border border-slate-100">
+                  <div>
+                    <h4 className="font-black text-slate-800 text-lg">{s.username}</h4>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{s.role} | {s.phone}</p>
+                  </div>
+                  <button onClick={() => onDeleteStaff(s.id)} className="p-3 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all">🗑️</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'Categories' && (
+          <div className="max-w-xl bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-50">
+            <div className="flex gap-4 mb-8">
+              <input type="text" placeholder="ক্যাটাগরি নাম..." value={newCatName} onChange={e=>setNewCatName(e.target.value)} className="flex-grow p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold outline-none focus:border-green-600" />
+              <button onClick={() => { if(newCatName) onAddCategory(newCatName); setNewCatName(''); }} className="px-8 bg-green-600 text-white font-black rounded-2xl shadow-lg">যোগ</button>
+            </div>
+            <div className="space-y-3">
+              {categories.map(c => (
+                <div key={c} className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center border border-slate-100">
+                  <span className="font-black text-slate-800">{c}</span>
+                  <button onClick={() => onDeleteCategory(c)} className="text-red-500 hover:scale-110 transition-transform">✕</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'Settings' && (
+          <div className="max-w-3xl space-y-8 pb-20">
+            <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-slate-50">
+              <h3 className="text-2xl font-black text-slate-800 mb-8">বেসিক সেটিংস</h3>
+              <div className="space-y-6">
+                <SettingInput label="সাইটের নাম" val={settings.site_name} onSave={v => onUpdateSetting('site_name', v)} />
+                <SettingInput label="হোয়াটসঅ্যাপ নম্বর" val={settings.whatsapp_number} onSave={v => onUpdateSetting('whatsapp_number', v)} />
+                <SettingInput label="সাপোর্ট ফোন" val={settings.support_phone} onSave={v => onUpdateSetting('support_phone', v)} />
+                
+                <div className="grid grid-cols-2 gap-8 pt-6">
+                  <div className="space-y-4">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest">সাইট লোগো</label>
+                    <div onClick={() => logoInputRef.current?.click()} className="h-40 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:border-green-600 transition-all overflow-hidden group">
+                      {settings.logo ? <img src={settings.logo} className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform" /> : <span className="text-4xl text-slate-300">+</span>}
+                      <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'logo')} />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest">হিরো ইমেজ</label>
+                    <div onClick={() => heroInputRef.current?.click()} className="h-40 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:border-green-600 transition-all overflow-hidden group">
+                      {settings.hero_image ? <img src={settings.hero_image} className="w-full h-full object-cover group-hover:scale-105 transition-transform" /> : <span className="text-4xl text-slate-300">+</span>}
+                      <input type="file" ref={heroInputRef} className="hidden" accept="image/*" onChange={e => handleFileUpload(e, 'hero')} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'Notifications' && (
+          <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-50 max-w-2xl">
+            <h3 className="text-2xl font-black text-slate-800 mb-6">🔔 নোটিফিকেশন কনফিগারেশন</h3>
+            <p className="text-slate-500 mb-8 font-medium">অর্ডার আসার সাথে সাথে অটোমেটিক মেসেজ পেতে Webhook URL ব্যবহার করুন।</p>
+            <div className="space-y-6">
+               <div className="p-6 bg-orange-50 rounded-[2rem] border border-orange-100">
+                  <label className="text-xs font-black text-orange-600 uppercase tracking-widest mb-2 block">Discord/Slack Webhook URL</label>
+                  <input type="text" value={settings.notification_webhook_url || ''} onChange={e=>onUpdateSetting('notification_webhook_url', e.target.value)} className="w-full p-4 bg-white border-none rounded-xl font-bold shadow-inner outline-none focus:ring-2 focus:ring-orange-500" placeholder="https://..." />
+               </div>
+               <div className="text-xs font-bold text-slate-400 leading-relaxed pl-2 italic">
+                 *আপনি ডিসকর্ড চ্যানেলের Webhook URL দিলে প্রতিবার অর্ডারে সেখানে বিস্তারিত মেসেজ চলে যাবে।
+               </div>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* MODALS */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur">
+           <div className="bg-white w-full max-w-xl rounded-[3rem] p-10 shadow-2xl">
+              <div className="flex justify-between items-center mb-8">
+                 <h3 className="text-3xl font-black text-slate-800">অর্ডার ডিটেইলস</h3>
+                 <button onClick={() => setSelectedOrder(null)} className="text-2xl text-slate-400">✕</button>
+              </div>
+              <div className="space-y-6">
+                 <div className="p-6 bg-slate-50 rounded-3xl grid grid-cols-2 gap-4">
+                    <div><label className="text-[10px] font-black uppercase text-slate-400">অর্ডার আইডি</label><div className="font-black">{selectedOrder.id}</div></div>
+                    <div><label className="text-[10px] font-black uppercase text-slate-400">লোকেশন</label><div className="font-black text-green-700">{selectedOrder.location}</div></div>
+                    <div><label className="text-[10px] font-black uppercase text-slate-400">গ্রাহক</label><div className="font-black">{selectedOrder.customerName}</div></div>
+                    <div><label className="text-[10px] font-black uppercase text-slate-400">ফোন</label><div className="font-black">{selectedOrder.customerPhone}</div></div>
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 pl-2">পণ্যসমূহ</label>
+                    <div className="max-h-40 overflow-y-auto space-y-2 pr-2">
+                       {selectedOrder.items.map((it,idx) => (
+                         <div key={idx} className="flex justify-between p-3 bg-white border border-slate-100 rounded-xl font-bold text-sm">
+                            <span>{it.name} x{it.quantity}</span>
+                            <span className="text-green-700">৳{it.price * it.quantity}</span>
+                         </div>
+                       ))}
+                    </div>
+                 </div>
+                 <div className="flex justify-between items-center pt-4 border-t">
+                    <span className="font-black text-xl">মোট পরিশোধযোগ্য:</span>
+                    <span className="text-3xl font-black text-green-700">৳{selectedOrder.totalPrice}</span>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
 
       {showProductModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur">
-          <div className="bg-white w-full max-w-2xl rounded-[2.5rem] p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
-             <button onClick={() => setShowProductModal(false)} className="absolute top-6 right-6 text-slate-400 text-xl">✕</button>
-             <h3 className="text-2xl font-black mb-6">পণ্যের তথ্য</h3>
-             <div className="grid grid-cols-2 gap-6">
-                <input type="text" placeholder="নাম" className="col-span-2 p-4 bg-slate-50 rounded-xl font-bold border-none outline-none focus:ring-2 focus:ring-green-500" value={formState.name} onChange={e=>setFormState({...formState, name: e.target.value})} />
-                <input type="number" placeholder="মূল্য" className="p-4 bg-slate-50 rounded-xl font-bold border-none outline-none focus:ring-2 focus:ring-green-500" value={formState.price} onChange={e=>setFormState({...formState, price: Number(e.target.value)})} />
-                <select className="p-4 bg-slate-50 rounded-xl font-bold border-none outline-none focus:ring-2 focus:ring-green-500" value={formState.category} onChange={e=>setFormState({...formState, category: e.target.value})}>
-                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+          <div className="bg-white w-full max-w-3xl rounded-[3rem] p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
+             <div className="flex justify-between items-center mb-8">
+               <h3 className="text-3xl font-black text-slate-800">{editingProduct ? 'পণ্য এডিট' : 'নতুন পণ্য'}</h3>
+               <button onClick={() => setShowProductModal(false)} className="text-2xl text-slate-400">✕</button>
              </div>
-             <div className="mt-8 flex gap-4">
-               <button onClick={() => setShowProductModal(false)} className="flex-grow py-4 bg-slate-100 rounded-xl font-black text-slate-500">বাতিল</button>
-               <button onClick={() => { if(editingProduct) onUpdateProduct({...formState, id: editingProduct.id}); else onAddProduct(formState); setShowProductModal(false); }} className="flex-grow py-4 bg-green-600 text-white rounded-xl font-black">সংরক্ষণ</button>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                   <div>
+                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2">পণ্যের নাম</label>
+                     <input type="text" className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-50 focus:border-green-600 outline-none font-bold" value={formState.name} onChange={e=>setFormState({...formState, name: e.target.value})} />
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2">মূল্য</label>
+                        <input type="number" className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-50 focus:border-green-600 outline-none font-bold" value={formState.price} onChange={e=>setFormState({...formState, price: Number(e.target.value)})} />
+                     </div>
+                     <div>
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2">স্টক</label>
+                        <input type="number" className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-50 focus:border-green-600 outline-none font-bold" value={formState.stock} onChange={e=>setFormState({...formState, stock: Number(e.target.value)})} />
+                     </div>
+                   </div>
+                   <div>
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2">ক্যাটাগরি</label>
+                      <select className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-50 focus:border-green-600 outline-none font-bold appearance-none" value={formState.category} onChange={e=>setFormState({...formState, category: e.target.value})}>
+                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                   </div>
+                </div>
+                <div className="space-y-6">
+                   <div>
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2">ইমেজ</label>
+                      <div className="h-40 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden cursor-pointer" onClick={() => document.getElementById('p-file')?.click()}>
+                         {formState.image ? <img src={formState.image} className="w-full h-full object-cover" /> : <span className="text-4xl text-slate-300">+</span>}
+                         <input type="file" id="p-file" className="hidden" onChange={e => handleFileUpload(e, 'product')} />
+                      </div>
+                   </div>
+                   <div>
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2">সংক্ষিপ্ত বর্ণনা</label>
+                      <textarea className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-50 focus:border-green-600 outline-none font-bold h-24" value={formState.description} onChange={e=>setFormState({...formState, description: e.target.value})} />
+                   </div>
+                </div>
              </div>
+             <div className="flex gap-4 mt-10">
+               <button onClick={() => setShowProductModal(false)} className="flex-grow py-5 bg-slate-100 text-slate-500 font-black rounded-3xl">বাতিল</button>
+               <button onClick={() => { if(editingProduct) onUpdateProduct({...formState, id: editingProduct.id}); else onAddProduct(formState); setShowProductModal(false); }} className="flex-grow py-5 bg-green-600 text-white font-black rounded-3xl shadow-xl">সংরক্ষণ করুন</button>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {showStaffModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur">
+          <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl">
+            <h3 className="text-2xl font-black mb-8">নতুন স্টাফ যোগ করুন</h3>
+            <div className="space-y-4">
+               <input type="text" placeholder="ইউজারনেম" className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold" value={staffForm.username} onChange={e=>setStaffForm({...staffForm, username: e.target.value})} />
+               <input type="password" placeholder="পাসওয়ার্ড" className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold" value={staffForm.password} onChange={e=>setStaffForm({...staffForm, password: e.target.value})} />
+               <input type="tel" placeholder="ফোন নম্বর" className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold" value={staffForm.phone} onChange={e=>setStaffForm({...staffForm, phone: e.target.value})} />
+               <select className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold appearance-none" value={staffForm.role} onChange={e=>setStaffForm({...staffForm, role: e.target.value as any})}>
+                 <option value="staff">স্টাফ</option>
+                 <option value="admin">অ্যাডমিন</option>
+               </select>
+               <div className="flex gap-4 pt-4">
+                 <button onClick={() => setShowStaffModal(false)} className="flex-grow py-4 bg-slate-100 text-slate-500 font-black rounded-2xl">বন্ধ</button>
+                 <button onClick={() => { onAddStaff(staffForm); setShowStaffModal(false); }} className="flex-grow py-4 bg-slate-900 text-white font-black rounded-2xl shadow-xl">যোগ করুন</button>
+               </div>
+            </div>
           </div>
         </div>
       )}
@@ -323,6 +460,21 @@ const StatCard = ({ label, val, icon, color }: any) => {
       <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mb-6 transition-all group-hover:rotate-12 ${bgClasses[color]}`}>{icon}</div>
       <div className="text-3xl font-black text-slate-900 tracking-tighter">{val}</div>
       <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">{label}</div>
+    </div>
+  );
+};
+
+const SettingInput = ({ label, val, onSave }: { label: string, val: string, onSave: (v: string) => void }) => {
+  const [value, setValue] = useState(val);
+  const [isChanged, setIsChanged] = useState(false);
+  useEffect(() => { setValue(val); setIsChanged(false); }, [val]);
+  return (
+    <div>
+      <label className="text-xs font-black text-slate-400 uppercase tracking-widest block mb-2 pl-2">{label}</label>
+      <div className="flex gap-3">
+        <input type="text" value={value} onChange={e => { setValue(e.target.value); setIsChanged(true); }} className="flex-grow p-4 bg-slate-50 rounded-2xl border-2 border-slate-50 focus:border-green-600 outline-none font-bold" />
+        {isChanged && <button onClick={() => onSave(value)} className="px-6 bg-green-600 text-white font-black rounded-2xl shadow-lg">সেভ</button>}
+      </div>
     </div>
   );
 };

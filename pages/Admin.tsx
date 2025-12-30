@@ -136,11 +136,11 @@ export const Admin: React.FC<AdminProps> = ({
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-['Hind_Siliguri']">
       <aside className="w-64 bg-white border-r border-slate-100 flex flex-col fixed h-full z-40 shadow-xl">
-        <div className="p-6 border-b flex items-center gap-3">
+        <div className="p-4 border-b flex items-center gap-3">
           <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center text-white font-black">A</div>
           <div className="font-black text-slate-800 text-sm truncate">{currentUser?.username}</div>
         </div>
-        <nav className="flex-grow p-4 space-y-2">
+        <nav className="flex-grow p-3 space-y-1">
           {[
             { id: 'Dashboard', label: 'ড্যাশবোর্ড', icon: '📊' },
             { id: 'Products', label: 'পণ্য', icon: '📦' },
@@ -151,16 +151,16 @@ export const Admin: React.FC<AdminProps> = ({
             { id: 'Categories', label: 'ক্যাটাগরি', icon: '🏷️' },
             { id: 'Settings', label: 'সেটিংস', icon: '⚙️' }
           ].map(tab => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id as AdminTab)} className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-black overflow-hidden group ${activeTab === tab.id ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id as AdminTab)} className={`relative w-full flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300 font-black overflow-hidden group ${activeTab === tab.id ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>
               {activeTab !== tab.id && <div className="absolute inset-0 bg-green-600 -translate-x-full group-hover:translate-x-0 transition-transform duration-300 z-0"></div>}
               <span className="relative z-10 text-lg">{tab.icon}</span>
               <span className="relative z-10 text-sm">{tab.label}</span>
             </button>
           ))}
         </nav>
-        <div className="p-4 space-y-2">
-          <button onClick={onBackToSite} className="w-full py-3 rounded-xl bg-slate-900 text-white font-black text-xs hover:scale-105 transition-all">🏠 ওয়েবসাইট</button>
-          <button onClick={handleLogout} className="w-full py-3 rounded-xl bg-red-50 text-red-600 font-black text-xs hover:bg-red-100 transition-all">🚪 লগ আউট</button>
+        <div className="p-3 border-t space-y-1">
+          <button onClick={onBackToSite} className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-black text-xs hover:scale-[1.02] transition-all">🏠 ওয়েবসাইট</button>
+          <button onClick={handleLogout} className="w-full py-2.5 rounded-xl bg-red-50 text-red-600 font-black text-xs hover:bg-red-100 transition-all">🚪 লগ আউট</button>
         </div>
       </aside>
 
@@ -265,7 +265,6 @@ export const Admin: React.FC<AdminProps> = ({
            </div>
         )}
         
-        {/* Remaining tabs... logic same as before */}
         {activeTab === 'Products' && (
            <div className="bg-white p-8 rounded-[2rem] shadow-sm">
             <div className="flex justify-between items-center mb-8">
@@ -292,16 +291,11 @@ export const Admin: React.FC<AdminProps> = ({
             </div>
           </div>
         )}
-
-        {/* Categories, Staff, Settings tabs omitted for brevity but should remain unchanged */}
-        
       </main>
 
-      {/* Product Modal Omitted for brevity */}
       {showProductModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur">
           <div className="bg-white w-full max-w-2xl rounded-[2.5rem] p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
-             {/* Product Form Logic */}
              <button onClick={() => setShowProductModal(false)} className="absolute top-6 right-6 text-slate-400 text-xl">✕</button>
              <h3 className="text-2xl font-black mb-6">পণ্যের তথ্য</h3>
              <div className="grid grid-cols-2 gap-6">
@@ -318,8 +312,6 @@ export const Admin: React.FC<AdminProps> = ({
           </div>
         </div>
       )}
-
-      {/* Staff Modal Omitted for brevity */}
     </div>
   );
 };

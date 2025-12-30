@@ -29,9 +29,9 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- 3. Create Customers Table (Corrected based on screenshots)
+-- 3. Create Customers Table
 CREATE TABLE IF NOT EXISTS customers (
-  customer_phone TEXT PRIMARY KEY, -- Used for identification and deduplication
+  customer_phone TEXT PRIMARY KEY,
   customer_name TEXT NOT NULL,
   total_orders INTEGER DEFAULT 0,
   total_spent NUMERIC DEFAULT 0,
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS site_settings (
   value TEXT
 );
 
--- IMPORTANT: Disable RLS for ease of use
+-- IMPORTANT: Disable RLS for ease of use during development
 ALTER TABLE products DISABLE ROW LEVEL SECURITY;
 ALTER TABLE orders DISABLE ROW LEVEL SECURITY;
 ALTER TABLE customers DISABLE ROW LEVEL SECURITY;
@@ -68,3 +68,22 @@ ALTER TABLE categories DISABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE site_settings DISABLE ROW LEVEL SECURITY;
 ```
+
+## How to Get Notified of New Orders
+
+### Method 1: Database Webhooks (Easiest)
+1. In your Supabase Dashboard, go to **Database** -> **Webhooks**.
+2. Enable Webhooks if not already enabled.
+3. Create a new Webhook:
+   - **Name:** New Order Alert
+   - **Table:** `orders`
+   - **Events:** `Insert`
+   - **Type:** HTTP Request
+   - **Method:** POST
+   - **URL:** [Your Zapier, Make, or Discord Webhook URL]
+4. Supabase will now send a JSON payload to that URL every time an order is placed.
+
+### Method 2: Discord Notifications (Free)
+1. Create a Discord Server and a Channel.
+2. Channel Settings -> Integrations -> Webhooks -> New Webhook.
+3. Copy the URL and paste it in the **Admin Panel -> Notifications** tab in the web app.

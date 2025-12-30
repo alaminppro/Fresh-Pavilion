@@ -21,6 +21,7 @@ interface SiteSettings {
   hero_image: string | null;
   whatsapp_number: string;
   support_phone: string;
+  notification_webhook_url?: string;
 }
 
 const App: React.FC = () => {
@@ -43,33 +44,23 @@ const App: React.FC = () => {
     logo: null,
     hero_image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=1600',
     whatsapp_number: '01630145305',
-    support_phone: '01630145305'
+    support_phone: '01630145305',
+    notification_webhook_url: ''
   });
 
-  // Routing Logic: Sync state with URL Hash
+  // Routing Logic
   useEffect(() => {
     const handleRouting = () => {
       const hash = window.location.hash.replace('#', '');
-      
-      if (hash === 'shop') {
-        setCurrentPage('shop');
-        setSelectedProductId(null);
-      } else if (hash === 'admin') {
-        setCurrentPage('admin');
-        setSelectedProductId(null);
-      } else if (hash.startsWith('product-')) {
-        const id = hash.replace('product-', '');
-        setSelectedProductId(id);
+      if (hash === 'shop') setCurrentPage('shop');
+      else if (hash === 'admin') setCurrentPage('admin');
+      else if (hash.startsWith('product-')) {
+        setSelectedProductId(hash.replace('product-', ''));
         setCurrentPage('product-detail');
-      } else {
-        setCurrentPage('home');
-        setSelectedProductId(null);
-      }
+      } else setCurrentPage('home');
     };
-
     window.addEventListener('hashchange', handleRouting);
-    handleRouting(); // Initial routing on load
-    
+    handleRouting();
     return () => window.removeEventListener('hashchange', handleRouting);
   }, []);
 
@@ -77,9 +68,7 @@ const App: React.FC = () => {
     window.location.hash = page === 'home' ? '' : page;
   };
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
+  useEffect(() => { fetchInitialData(); }, []);
 
   const fetchInitialData = async () => {
     if (!isSupabaseConfigured || !supabase) {
@@ -105,46 +94,31 @@ const App: React.FC = () => {
         supabase.from('customers').select('*').order('total_spent', { ascending: false })
       ]);
       
-      if (dbProducts && dbProducts.length > 0) setProducts(dbProducts as Product[]);
-      else setProducts(INITIAL_PRODUCTS as Product[]);
-      
+      if (dbProducts) setProducts(dbProducts.length > 0 ? dbProducts as Product[] : INITIAL_PRODUCTS as Product[]);
       if (dbOrders) {
-        const mappedOrders: Order[] = dbOrders.map((o: any) => ({
-          id: o.id,
-          customerName: o.customer_name,
-          customerPhone: o.customer_phone,
-          location: o.location,
-          items: o.items,
-          totalPrice: Number(o.total_price),
-          status: o.status,
-          created_at: o.created_at
-        }));
-        setOrders(mappedOrders);
+        setOrders(dbOrders.map((o: any) => ({
+          id: o.id, customerName: o.customer_name, customerPhone: o.customer_phone,
+          location: o.location, items: o.items, totalPrice: Number(o.total_price),
+          status: o.status, created_at: o.created_at
+        })));
       }
-
       if (dbStaff) setStaff(dbStaff as AdminUser[]);
-      if (dbCategories && dbCategories.length > 0) setCategories(dbCategories.map(c => c.name));
-      if (dbCustomers) setCustomers(dbCustomers || []);
-      
+      if (dbCategories) setCategories(dbCategories.map(c => c.name));
+      if (dbCustomers) setCustomers(dbCustomers);
       if (dbSettings) {
         const newSettings = { ...settings };
-        dbSettings.forEach(s => {
-          if (s.key in newSettings) (newSettings as any)[s.key] = s.value;
-        });
+        dbSettings.forEach(s => { if (s.key in newSettings) (newSettings as any)[s.key] = s.value; });
         setSettings(newSettings);
       }
       setLastSync(new Date());
-    } catch (err) {
-      console.error("Critical error fetching data from Supabase:", err);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (err) { console.error(err); } finally { setIsLoading(false); }
   };
 
   const createOrder = async (orderData: Omit<Order, 'id' | 'created_at' | 'status'>): Promise<boolean> => {
+    const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
+    const now = new Date().toISOString();
+
     if (!isSupabaseConfigured || !supabase) {
-      const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
-      const now = new Date().toISOString();
       const localOrder: Order = { ...orderData, id: orderId, status: 'Pending', created_at: now };
       setOrders(prev => [localOrder, ...prev]);
       setCart([]);
@@ -152,69 +126,32 @@ const App: React.FC = () => {
     }
 
     try {
-      const orderId = `#FP-${Math.floor(Math.random() * 900000 + 100000)}`;
-      const now = new Date().toISOString();
-
       const { error: orderError } = await supabase.from('orders').insert([{
-        id: orderId,
-        customer_name: orderData.customerName,
-        customer_phone: orderData.customerPhone,
-        location: orderData.location,
-        items: orderData.items,
-        total_price: orderData.totalPrice,
-        status: 'Pending',
-        created_at: now
+        id: orderId, customer_name: orderData.customerName, customer_phone: orderData.customerPhone,
+        location: orderData.location, items: orderData.items, total_price: orderData.totalPrice,
+        status: 'Pending', created_at: now
       }]);
 
       if (orderError) throw orderError;
 
-      const { data: existingCust } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('customer_phone', orderData.customerPhone)
-        .maybeSingle();
+      // Optional: Trigger notification via frontend if Edge Functions aren't set up
+      if (settings.notification_webhook_url) {
+        fetch(settings.notification_webhook_url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            content: `🚀 **New Order Alert!**\nOrder ID: ${orderId}\nCustomer: ${orderData.customerName}\nPhone: ${orderData.customerPhone}\nTotal: ৳${orderData.totalPrice}\nLocation: ${orderData.location}` 
+          })
+        }).catch(e => console.error("Webhook failed:", e));
+      }
 
-      const customerPayload = {
-        customer_phone: orderData.customerPhone,
-        customer_name: orderData.customerName,
-        total_orders: (existingCust?.total_orders || 0) + 1,
-        total_spent: Number(existingCust?.total_spent || 0) + Number(orderData.totalPrice)
-      };
-
-      await supabase.from('customers').upsert([customerPayload], { onConflict: 'customer_phone' });
-      
       setCart([]);
       await fetchInitialData(); 
       return true;
     } catch (err: any) {
-      console.error("Order processing error:", err);
-      alert("অর্ডার সম্পন্ন করা যায়নি: " + (err.message || "সার্ভার সংযোগ সমস্যা"));
+      alert("অর্ডার সম্পন্ন করা যায়নি।");
       return false;
     }
-  };
-
-  const syncCustomersFromOrders = async () => {
-    if (!isSupabaseConfigured || !supabase) return;
-    try {
-      const { data: allOrders, error: orderErr } = await supabase.from('orders').select('*');
-      if (orderErr) throw orderErr;
-      if (!allOrders || allOrders.length === 0) return;
-
-      const customerMap = new Map();
-      allOrders.forEach(order => {
-        const phone = order.customer_phone;
-        const current = customerMap.get(phone) || { 
-          customer_phone: phone, customer_name: order.customer_name, total_orders: 0, total_spent: 0 
-        };
-        current.total_orders += 1;
-        current.total_spent += Number(order.total_price);
-        customerMap.set(phone, current);
-      });
-
-      const customerPayloads = Array.from(customerMap.values());
-      await supabase.from('customers').upsert(customerPayloads, { onConflict: 'customer_phone' });
-      await fetchInitialData();
-    } catch (err) { console.error(err); }
   };
 
   const addToCart = (product: Product) => {
@@ -226,25 +163,13 @@ const App: React.FC = () => {
     setIsCartOpen(true);
   };
 
-  const openProductDetail = (id: string) => {
-    window.location.hash = `product-${id}`;
-    window.scrollTo(0, 0);
-  };
-
-  const closeProductDetail = () => {
-    if (window.location.hash.startsWith('#product-')) {
-       window.history.back();
-    } else {
-       navigateTo('home');
-    }
-  };
+  const openProductDetail = (id: string) => { window.location.hash = `product-${id}`; window.scrollTo(0, 0); };
+  const closeProductDetail = () => { window.history.back(); };
 
   const handleUpdateSetting = async (key: string, value: string) => {
     setSettings(prev => ({ ...prev, [key]: value }));
     if (isSupabaseConfigured && supabase) {
-      try {
-        await supabase.from('site_settings').upsert([{ key, value }], { onConflict: 'key' });
-      } catch (err) { console.error(err); }
+      await supabase.from('site_settings').upsert([{ key, value }], { onConflict: 'key' });
     }
   };
 
@@ -255,105 +180,26 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-[#FDFDFD]">
       {!isAdminMode && (
-        <Navbar 
-          onNavigate={navigateTo} 
-          currentPage={currentPage} 
-          cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)} 
-          wishlistCount={wishlist.length} 
-          onOpenCart={() => setIsCartOpen(true)} 
-          onOpenWishlist={() => setIsWishlistOpen(true)} 
-          logo={settings.logo}
-          siteName={settings.site_name}
-        />
+        <Navbar onNavigate={navigateTo} currentPage={currentPage} cartCount={cart.reduce((acc, i) => acc + i.quantity, 0)} wishlistCount={wishlist.length} onOpenCart={() => setIsCartOpen(true)} onOpenWishlist={() => setIsWishlistOpen(true)} logo={settings.logo} siteName={settings.site_name} />
       )}
-      
       <main className={`flex-grow ${isAdminMode ? '' : 'pt-16 md:pt-20'} mx-auto w-full pb-16 md:pb-0`}>
-        {currentPage === 'home' && (
-          <Home 
-            products={products} wishlist={wishlist} onShopNow={() => navigateTo('shop')} onAddToCart={addToCart} 
-            onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
-            onProductClick={openProductDetail} 
-            heroImage={settings.hero_image} siteName={settings.site_name} whatsappNumber={settings.whatsapp_number}
-          />
-        )}
-        {currentPage === 'shop' && (
-          <div className="px-0 md:px-12 max-w-[1600px] mx-auto">
-            <Shop 
-              products={products} wishlist={wishlist} onAddToCart={addToCart} 
-              onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
-              onProductClick={openProductDetail} 
-            />
-          </div>
-        )}
-        {currentPage === 'admin' && (
-          <Admin 
-            products={products} orders={orders} categories={categories} staff={staff} customers={customers}
-            onAddProduct={async (p) => { if (supabase) { const { data } = await supabase.from('products').insert([p]).select(); if (data) setProducts([data[0], ...products]); } }}
-            onDeleteProduct={async (id) => { if (supabase) await supabase.from('products').delete().eq('id', id); setProducts(products.filter(p => p.id !== id)); }} 
-            onUpdateProduct={async (p) => { if (supabase) await supabase.from('products').update(p).eq('id', p.id); setProducts(products.map(pr => pr.id === p.id ? p : pr)); }} 
-            onAddCategory={async (name) => { if (supabase) await supabase.from('categories').insert([{ name }]); setCategories([...categories, name]); }}
-            onDeleteCategory={async (name) => { if (supabase) await supabase.from('categories').delete().eq('name', name); setCategories(categories.filter(c => c !== name)); }}
-            onAddStaff={async (s) => { if (supabase) { const { data } = await supabase.from('admin_users').insert([s]).select(); if (data) setStaff([...staff, data[0]]); } }}
-            onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); setStaff(staff.filter(s => s.id !== id)); }}
-            onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); setOrders(orders.map(o => o.id === id ? { ...o, status } : o)); }}
-            onSeedDatabase={fetchInitialData}
-            onSyncCustomers={syncCustomersFromOrders}
-            onBackToSite={() => navigateTo('home')} 
-            settings={{ ...settings, lastSync }} onUpdateSetting={handleUpdateSetting}
-          />
-        )}
-        {currentPage === 'product-detail' && products.find(p => p.id === selectedProductId) && (
-          <div className="px-0 md:px-12 max-w-[1600px] mx-auto">
-            <ProductDetail 
-              product={products.find(p => p.id === selectedProductId)!} allProducts={products} 
-              onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} 
-              isWishlisted={wishlist.some(p => p.id === selectedProductId)} 
-              onProductClick={openProductDetail} 
-              onClose={closeProductDetail}
-              wishlist={wishlist} whatsappNumber={settings.whatsapp_number} 
-            />
-          </div>
-        )}
+        {currentPage === 'home' && <Home products={products} wishlist={wishlist} onShopNow={() => navigateTo('shop')} onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} onProductClick={openProductDetail} heroImage={settings.hero_image} siteName={settings.site_name} whatsappNumber={settings.whatsapp_number} />}
+        {currentPage === 'shop' && <div className="px-0 md:px-12 max-w-[1600px] mx-auto"><Shop products={products} wishlist={wishlist} onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} onProductClick={openProductDetail} /></div>}
+        {currentPage === 'admin' && <Admin products={products} orders={orders} categories={categories} staff={staff} customers={customers} onAddProduct={async (p) => { if (supabase) { const { data } = await supabase.from('products').insert([p]).select(); if (data) setProducts([data[0], ...products]); } }} onDeleteProduct={async (id) => { if (supabase) await supabase.from('products').delete().eq('id', id); setProducts(products.filter(p => p.id !== id)); }} onUpdateProduct={async (p) => { if (supabase) await supabase.from('products').update(p).eq('id', p.id); setProducts(products.map(pr => pr.id === p.id ? p : pr)); }} onAddCategory={async (name) => { if (supabase) await supabase.from('categories').insert([{ name }]); setCategories([...categories, name]); }} onDeleteCategory={async (name) => { if (supabase) await supabase.from('categories').delete().eq('name', name); setCategories(categories.filter(c => c !== name)); }} onAddStaff={async (s) => { if (supabase) { const { data } = await supabase.from('admin_users').insert([s]).select(); if (data) setStaff([...staff, data[0]]); } }} onDeleteStaff={async (id) => { if (supabase) await supabase.from('admin_users').delete().eq('id', id); setStaff(staff.filter(s => s.id !== id)); }} onUpdateOrderStatus={async (id, status) => { if (supabase) await supabase.from('orders').update({ status }).eq('id', id); setOrders(orders.map(o => o.id === id ? { ...o, status } : o)); }} onSeedDatabase={fetchInitialData} onSyncCustomers={() => {}} onBackToSite={() => navigateTo('home')} settings={{ ...settings, lastSync }} onUpdateSetting={handleUpdateSetting} />}
+        {currentPage === 'product-detail' && products.find(p => p.id === selectedProductId) && <div className="px-0 md:px-12 max-w-[1600px] mx-auto"><ProductDetail product={products.find(p => p.id === selectedProductId)!} allProducts={products} onAddToCart={addToCart} onToggleWishlist={(p) => setWishlist(prev => prev.some(it => it.id === p.id) ? prev.filter(it => it.id !== p.id) : [...prev, p])} isWishlisted={wishlist.some(p => p.id === selectedProductId)} onProductClick={openProductDetail} onClose={closeProductDetail} wishlist={wishlist} whatsappNumber={settings.whatsapp_number} /></div>}
       </main>
-
       {!isAdminMode && (
         <>
           <Footer siteName={settings.site_name} supportPhone={settings.support_phone} logo={settings.logo} />
           <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-slate-100 z-[140] h-16 px-6 flex items-center justify-between pb-safe">
-            <BottomNavItem 
-              active={currentPage === 'home'} 
-              onClick={() => navigateTo('home')} 
-              icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>} 
-              label="হোম"
-            />
-            <BottomNavItem 
-              active={currentPage === 'shop'} 
-              onClick={() => navigateTo('shop')} 
-              icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>} 
-              label="শপ"
-            />
-            <BottomNavItem 
-              active={isWishlistOpen} 
-              onClick={() => setIsWishlistOpen(true)} 
-              icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>} 
-              label="উইশ"
-            />
-            <BottomNavItem 
-              active={isAdminMode} 
-              onClick={() => navigateTo('admin')} 
-              icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>} 
-              label="অ্যাডমিন"
-            />
+            <BottomNavItem active={currentPage === 'home'} onClick={() => navigateTo('home')} icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>} label="হোম" />
+            <BottomNavItem active={currentPage === 'shop'} onClick={() => navigateTo('shop'} icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>} label="শপ" />
+            <BottomNavItem active={isWishlistOpen} onClick={() => setIsWishlistOpen(true)} icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>} label="উইশ" />
+            <BottomNavItem active={isAdminMode} onClick={() => navigateTo('admin')} icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>} label="অ্যাডমিন" />
           </div>
         </>
       )}
-
-      <CartSidebar 
-        isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} 
-        onRemove={(id) => setCart(cart.filter(i => i.id !== id))} 
-        onUpdateQuantity={(id, d) => setCart(cart.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + d)} : i))} 
-        onCheckout={createOrder} 
-      />
+      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onRemove={(id) => setCart(cart.filter(i => i.id !== id))} onUpdateQuantity={(id, d) => setCart(cart.map(i => i.id === id ? {...i, quantity: Math.max(1, i.quantity + d)} : i))} onCheckout={createOrder} />
       <WishlistSidebar isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} items={wishlist} onAddToCart={addToCart} onRemove={(p) => setWishlist(prev => prev.filter(it => it.id !== p.id))} />
       <FloatingWhatsApp phoneNumber={settings.whatsapp_number} />
     </div>
@@ -361,15 +207,8 @@ const App: React.FC = () => {
 };
 
 const BottomNavItem = ({ active, onClick, icon, label }: any) => (
-  <button 
-    onClick={onClick} 
-    className={`flex flex-col items-center justify-center gap-1 transition-all ${
-      active ? 'text-green-600 scale-110' : 'text-slate-400'
-    }`}
-  >
-    <div className={`transition-all duration-300 ${active ? 'drop-shadow-[0_0_8px_rgba(22,163,74,0.4)]' : ''}`}>
-      {icon}
-    </div>
+  <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1 transition-all ${active ? 'text-green-600 scale-110' : 'text-slate-400'}`}>
+    <div className={`transition-all duration-300 ${active ? 'drop-shadow-[0_0_8px_rgba(22,163,74,0.4)]' : ''}`}>{icon}</div>
     <span className="text-[10px] font-black uppercase tracking-tighter">{label}</span>
   </button>
 );
